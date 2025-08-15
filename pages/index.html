@@ -112,6 +112,10 @@
         <label><input type="radio" name="enc" value="raw"> RAW</label>
       </div>
       <div class="row" style="margin-top:6px">
+        <label>Default W <input id="defW" type="number" min="1" max="64" value="16" style="width:80px"></label>
+        <label>Default H <input id="defH" type="number" min="1" max="64" value="16" style="width:80px"></label>
+      </div>
+      <div class="row" style="margin-top:6px">
         <button class="btn acc" id="copyPacked">Copy Packed</button>
         <button class="btn" id="copyRLE">Copy RLE</button>
         <button class="btn" id="copyRAW">Copy RAW</button>
@@ -176,6 +180,63 @@
     return '#'+q(parseInt(hex.slice(0,2),16))+q(parseInt(hex.slice(2,4),16))+q(parseInt(hex.slice(4,6),16));
   }
 
+  // ===== encoding helpers (moved from runtime) =====
+  const b36=n=>n.toString(36);
+  const toRGB3=h=>{ let t=h.replace('#',''); if(t.length===3) return t; return hex6to3('#'+t).slice(1); };
+const zigzagMap=(w,h)=>{const m=new Uint32Array(w*h);let i=0;for(let y=0;y<h;y++){if(y%2===0){for(let x=0;x<w;x++)m[i++]=y*w+x;}else{for(let x=w-1;x>=0;x--)m[i++]=y*w+x;}}return m;};
+const mapIndices=(w,h,fn)=>{const out=new Uint32Array(w*h);let i=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)out[i++]=fn(x,y);return out;};
+const remap=(s,w2,h2,m)=>{const out=new Uint8Array(w2*h2);for(let i=0;i<out.length;i++)out[i]=s.data[m[i]];return{w:w2,h:h2,data:out,palette:s.palette.slice()};};
+const flipH=s=>remap(s,s.w,s.h,mapIndices(s.w,s.h,(x,y)=>y*s.w+(s.w-1-x)));
+const flipV=s=>remap(s,s.w,s.h,mapIndices(s.w,s.h,(x,y)=>(s.h-1-y)*s.w+x));
+const rot90=s=>{const{w,h}=s,m=new Uint32Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)m[x*h+(h-1-y)]=y*w+x;const out=new Uint8Array(w*h);for(let i=0;i<out.length;i++)out[i]=s.data[m[i]];return{w:h,h:w,data:out,palette:s.palette.slice()};};
+const rot180=s=>flipV(flipH(s));
+const rot270=s=>rot90(rot180(s));
+
+function b128encode(bytes){
+    let out='', acc=0,bits=0;
+    for(let i=0;i<bytes.length;i++){
+      acc=(acc<<8)|bytes[i]; bits+=8;
+      while(bits>=7){ bits-=7; out+=String.fromCharCode((acc>>bits)&127); }
+    }
+    if(bits>0) out+=String.fromCharCode((acc<<(7-bits))&127);
+    return out;
+  }
+
+function encodePacked(sprite,paletteHex){
+    const {w,h,data}=sprite;
+    const pal=paletteHex.map(toRGB3);
+    let map=b36(pal.length);
+    for(const hex of pal) map+=hex;
+    const totalBytes=(data.length+1>>1);
+    const bytes=new Uint8Array(totalBytes);
+    for(let i=0,bi=0;i<data.length;i+=2,bi++) bytes[bi]=(data[i]<<4)|((i+1<data.length)?data[i+1]:0);
+    const diff=new Uint8Array(totalBytes); let prev=0;
+    for(let i=0;i<totalBytes;i++){ const b=bytes[i]; diff[i]=b^prev; prev=b; }
+    const comp=[]; for(let i=0;i<diff.length;i++){ const b=diff[i]; if(b===0){ let c=1; while(i+1<diff.length&&diff[i+1]===0&&c<255){c++;i++;} comp.push(0,c); } else comp.push(b); }
+    const data128=b128encode(Uint8Array.from(comp));
+    let dims=''; if(w!==DEF_W||h!==DEF_H){ if(w===h) dims=b36(w); else{ if(w!==DEF_W)dims+=b36(w); dims+='x'; if(h!==DEF_H)dims+=b36(h); } }
+    return dims+'|'+map+data128;
+  }
+
+function encodeWithBestOrder(sprite,paletteHex){
+    const orders=[{id:'',map:null},{id:'Z',map:zigzagMap(sprite.w,sprite.h)}];
+    let best=null;
+    for(const o of orders){
+      const mapped=o.map?{w:sprite.w,h:sprite.h,data:(()=>{const d=new Uint8Array(sprite.data.length);for(let i=0;i<o.map.length;i++)d[i]=sprite.data[o.map[i]];return d;})(),palette:sprite.palette}:sprite;
+      const enc=encodePacked(mapped,paletteHex);
+      const [dims,rest]=enc.split('|');
+      const palLen=1+paletteHex.length*3;
+      const pal=rest.slice(0,palLen);
+      const data=rest.slice(palLen);
+      const cand=o.id?(dims+'|'+pal+o.id+data):enc;
+      if(!best||cand.length<best.length)best=cand;
+    }
+    return best;
+  }
+
+function encodeAuto(sprite,paletteHex){
+    return encodeWithBestOrder(sprite,paletteHex);
+  }
   // ===== DOM refs =====
   const grid=$('#stage'), gctx=grid.getContext('2d');
   const prev=$('#preview'), pctx=prev.getContext('2d');
@@ -183,9 +244,12 @@
   // ===== state =====
   let W=16,H=16,cell=0,offX=0,offY=0; let showGrid=true;
   let paletteHex=[];
+  let DEF_W=16, DEF_H=16;
   let activeIndex=0, tool='pencil', mirrorX=false, mirrorY=false;
   const undo=[], redo=[]; const MAX_UNDO=120;
   let sprite=TinySprites.create(W,H,0,[]);
+  TinySprites.defaultW=DEF_W;
+  TinySprites.defaultH=DEF_H;
 
   // ===== undo =====
   function save(){ undo.push({d:new Uint8Array(sprite.data),w:W,h:H,p:[...paletteHex]}); if(undo.length>MAX_UNDO)undo.shift(); redo.length=0; }
@@ -284,10 +348,10 @@
   }
   function drawPreview(){ const fw=+$('#fitw').value||160, fh=+$('#fith').value||160; prev.width=fw; prev.height=fh; TinySprites.draw(pctx, sprite, 0,0, { fit:{w:fw,h:fh} }); }
   function updateStats(){
-    const palTokens=paletteHex.map(h=>h.replace('#',''));
-    const rle = TinySprites.encodeWithBestOrder(sprite, palTokens, false);
-    const raw = TinySprites.encodeWithBestOrder(sprite, palTokens, true);
-    const best = TinySprites.encodeAuto(sprite, palTokens);
+    const palTokens=paletteHex;
+    const rle = encodeWithBestOrder(sprite, palTokens, false);
+    const raw = encodeWithBestOrder(sprite, palTokens, true);
+    const best = encodeAuto(sprite, palTokens);
     const bp=(s)=>new Blob([s]).size;
     $('#stats').textContent =
 `W×H: ${W}×${H}
@@ -345,10 +409,10 @@ AUTO → ${best.length} chars`;
   $('#mirrorX').onclick=()=>{ mirrorX=!mirrorX; updateStatus(); };
   $('#mirrorY').onclick=()=>{ mirrorY=!mirrorY; updateStatus(); };
   $('#clear').onclick=()=>{ save(); sprite.data.fill(0); drawAll(); };
-  $('#rotL').onclick=()=>{ save(); sprite=TinySprites.rot270(sprite); W=sprite.w; H=sprite.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); };
-  $('#rotR').onclick=()=>{ save(); sprite=TinySprites.rot90(sprite);  W=sprite.w; H=sprite.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); };
-  $('#flipH').onclick=()=>{ save(); sprite=TinySprites.flipH(sprite); drawAll(); };
-  $('#flipV').onclick=()=>{ save(); sprite=TinySprites.flipV(sprite); drawAll(); };
+  $('#rotL').onclick=()=>{ save(); sprite=rot270(sprite); W=sprite.w; H=sprite.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); };
+  $('#rotR').onclick=()=>{ save(); sprite=rot90(sprite);  W=sprite.w; H=sprite.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); };
+  $('#flipH').onclick=()=>{ save(); sprite=flipH(sprite); drawAll(); };
+  $('#flipV').onclick=()=>{ save(); sprite=flipV(sprite); drawAll(); };
 
   $('#scale').oninput=drawPreview; $('#fitw').oninput=drawPreview; $('#fith').oninput=drawPreview;
 
@@ -391,20 +455,34 @@ AUTO → ${best.length} chars`;
   $('#undoBtn').onclick=doUndo; $('#redoBtn').onclick=doRedo;
 
   function currentEncoding(){ return (document.querySelector('input[name="enc"]:checked')||{}).value||'auto'; }
-  function packedRLE(){ return TinySprites.encodeWithBestOrder(sprite, paletteHex.map(h=>h.slice(1)), false); }
-  function packedRAW(){ return TinySprites.encodeWithBestOrder(sprite, paletteHex.map(h=>h.slice(1)), true); }
-  function packedAuto(){ return TinySprites.encodeAuto(sprite, paletteHex.map(h=>h.slice(1))); }
+  function packedRLE(){ return encodeWithBestOrder(sprite, paletteHex); }
+  function packedRAW(){ return encodeWithBestOrder(sprite, paletteHex); }
+  function packedAuto(){ return encodeAuto(sprite, paletteHex); }
+
+  $('#defW').onchange=()=>{ DEF_W=cap(+$('#defW').value,1,64); TinySprites.defaultW=DEF_W; };
+  $('#defH').onchange=()=>{ DEF_H=cap(+$('#defH').value,1,64); TinySprites.defaultH=DEF_H; };
 
   $('#copyPacked').onclick=async()=>{ await copyText(packedAuto()); };
   $('#copyRLE').onclick=async()=>{ await copyText(packedRLE()); };
   $('#copyRAW').onclick=async()=>{ await copyText(packedRAW()); };
   $('#exportPng').onclick=()=>{ const s=+$('#scale').value||10; const can=TinySprites.toCanvas(sprite,s); const a=document.createElement('a'); a.href=can.toDataURL('image/png'); a.download='sprite.png'; a.click(); };
 
-  $('#loadPacked').onclick=()=>{ try{ const src=$('#io').value.trim(); const s=TinySprites.decodePacked(src); sprite=s; W=s.w; H=s.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; const pal=(src.split('|')[1]||''); if(pal) paletteHex=pal.split(/[.,]/).filter(Boolean).map(t=>t[0]==='#'?t:'#'+t); sprite.palette=TinySprites.makePalette(paletteHex); activeIndex=paletteHex.length>0?1:0; drawAll(); }catch(e){ alert('Invalid packed string'); } };
+  $('#loadPacked').onclick=()=>{ try{ const src=$('#io').value.trim(); const s=TinySprites.decodePacked(src); sprite=s; W=s.w; H=s.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; paletteHex=s.palette.slice(1).map(c=>hex6to3("#"+((c[0]<<16)|(c[1]<<8)|c[2]).toString(16).padStart(6,'0'))); sprite.palette=TinySprites.makePalette(paletteHex); activeIndex=paletteHex.length>0?1:0; drawAll(); }catch(e){ alert('Invalid packed string'); } };
 
   async function downloadRuntime(){
     const candidates=['tinysprites.min.js','tinysprites.js'];
-    for(const url of candidates){ try{ const res=await fetch(url); if(!res.ok) throw new Error('bad status'); const txt=await res.text(); const blob=new Blob([txt],{type:'application/javascript'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=url.split('/').pop(); document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); a.remove(); return; }catch(_){ } }
+    for(const url of candidates){
+      try{
+        const res=await fetch(url); if(!res.ok) throw new Error('bad status');
+        let txt=await res.text();
+        txt=txt.replace(/defaultW:\d+,defaultH:\d+/,`defaultW:${DEF_W},defaultH:${DEF_H}`);
+        const blob=new Blob([txt],{type:'application/javascript'});
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob); a.download=url.split('/').pop();
+        document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); a.remove();
+        return;
+      }catch(_){ }
+    }
     const a=document.createElement('a'); a.href='tinysprites.min.js'; a.download='tinysprites.min.js'; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove();
   }
   $('#downloadLib').onclick=downloadRuntime;
