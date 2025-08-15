@@ -210,20 +210,32 @@
                 </div>
                 <div class="info-item">
                     <div class="info-label">Default Width</div>
-                    <div class="info-value">13</div>
+                    <div class="info-value" id="currentWidth">13</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Default Height</div>
-                    <div class="info-value">9</div>
+                    <div class="info-value" id="currentHeight">9</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Expected Pixels</div>
-                    <div class="info-value">117</div>
+                    <div class="info-value" id="expectedPixels">117</div>
                 </div>
             </div>
             
             <div class="code-display">
-                <strong>Packed String:</strong> |4000ffffd0444␁␁A␒ A!␑␁␁CA)␕)␂␁E!␁␑␅␃␒␁␁#␓␂    ␇␁␁E␃␑␁ ␃␂  A␁␑␒␁␅!␁A!␒␚AE␁␁A#␁␁␅␇␃ ␁␁␒ ␁␃1␙%␁
+                <label for="testStringInput"><strong>Packed String:</strong></label>
+                <input id="testStringInput" style="width: 100%; margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <div>
+                        <label for="tileWidthInput"><strong>Tile Width:</strong></label>
+                        <input id="tileWidthInput" type="number" min="1" max="100" value="13" style="width: 100%; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
+                    </div>
+                    <div>
+                        <label for="tileHeightInput"><strong>Tile Height:</strong></label>
+                        <input id="tileHeightInput" type="number" min="1" max="100" value="9" style="width: 100%; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
+                    </div>
+                </div>
             </div>
             
             <div style="text-align: center; margin: 20px 0;">
@@ -290,26 +302,23 @@
 
     <script src="../tinysprites.js"></script>
     <script>
-        // Test configuration
-        // Create the packed string with proper control characters
-        const TEST_STRING = (() => {
-            // The packed string: |4000ffffd0444␁␁A␒ A!␑␁␁CA)␕)␂␁E!␁␑␅␃␒␁␁#␓␂    ␇␁␁E␃␑␁ ␃␂  A␁␑␒␁␅!␁A!␒␚AE␁␁A#␁␁␅␇␃ ␁␁␒ ␁␃1␙%␁
-            // Control characters: ␁=0x01, ␂=0x02, ␃=0x03, ␄=0x04, ␅=0x05, ␆=0x06, ␇=0x07, ␈=0x08, ␉=0x09, ␊=0x0A, ␋=0x0B, ␌=0x0C, ␍=0x0D, ␎=0x0E, ␏=0x0F
-            // ␐=0x10, ␑=0x11, ␒=0x12, ␓=0x13, ␔=0x14, ␕=0x15, ␖=0x16, ␗=0x17, ␘=0x18, ␙=0x19, ␚=0x1A
-            const chars = [
-                '|', '4', '0', '0', '0', 'f', 'f', 'f', 'f', 'd', '0', '4', '4', '4',
-                0x01, 0x01, 'A', 0x12, ' ', 'A', '!', 0x11, 0x01, 0x01, 'C', 'A', ')', ')', 0x15, ')', 0x02, 0x01, 'E', '!', 0x01, 0x11, 0x05, 0x03, 0x12, 0x01, 0x01, '#', 0x13, 0x02, ' ', ' ', ' ', 0x07, 0x01, 0x01, 'E', 0x03, 0x11, 0x01, ' ', 0x03, 0x02, ' ', ' ', 'A', 0x01, 0x11, 0x12, 0x01, 0x05, '!', 0x01, 'A', '!', 0x12, 0x1A, 'A', 'E', 0x01, 0x01, 'A', '#', 0x01, 0x01, 0x05, 0x07, 0x03, ' ', 0x01, 0x01, 0x12, ' ', 0x01, 0x03, '1', 0x19, '%', 0x01
-            ];
-            return chars.map(c => typeof c === 'string' ? c : String.fromCharCode(c)).join('');
-        })();
-        const TEST_WIDTH = 13;
-        const TEST_HEIGHT = 9;
+        const DEFAULT_TEST_STRING = "|1f00!AQACEAADAQEBEBAQ"
         
+        let TEST_STRING = DEFAULT_TEST_STRING;
+        let TEST_WIDTH = 13;
+        let TEST_HEIGHT = 9;
         let testResults = {};
         
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🧪 TinySprites Test Page Initialized');
+            document.getElementById('testStringInput').value = DEFAULT_TEST_STRING;
+            TEST_STRING = document.getElementById('testStringInput').value;
+            
+            // Set initial dimensions
+            TEST_WIDTH = parseInt(document.getElementById('tileWidthInput').value);
+            TEST_HEIGHT = parseInt(document.getElementById('tileHeightInput').value);
+            
             console.log('Test string:', TEST_STRING);
             console.log('Test dimensions:', TEST_WIDTH, 'x', TEST_HEIGHT);
             
@@ -318,11 +327,37 @@
             TinySprites.defaultH = TEST_HEIGHT;
             
             console.log('Default dimensions set to:', TinySprites.defaultW, 'x', TinySprites.defaultH);
+            
+            // Add event listeners for dynamic updates
+            document.getElementById('tileWidthInput').addEventListener('input', updateDisplayValues);
+            document.getElementById('tileHeightInput').addEventListener('input', updateDisplayValues);
+            
+            // Update display initially
+            updateDisplayValues();
         });
+        
+        function updateDisplayValues() {
+            const width = parseInt(document.getElementById('tileWidthInput').value) || 0;
+            const height = parseInt(document.getElementById('tileHeightInput').value) || 0;
+            
+            document.getElementById('currentWidth').textContent = width;
+            document.getElementById('currentHeight').textContent = height;
+            document.getElementById('expectedPixels').textContent = width * height;
+        }
         
         function runAllTests() {
             console.log('🧪 Running all tests...');
             testResults = {};
+            TEST_STRING = document.getElementById('testStringInput').value;
+            TEST_WIDTH = parseInt(document.getElementById('tileWidthInput').value);
+            TEST_HEIGHT = parseInt(document.getElementById('tileHeightInput').value);
+            
+            console.log('Using test string:', TEST_STRING);
+            console.log('Using dimensions:', TEST_WIDTH, 'x', TEST_HEIGHT);
+            
+            // Update TinySprites defaults
+            TinySprites.defaultW = TEST_WIDTH;
+            TinySprites.defaultH = TEST_HEIGHT;
             
             try {
                 testBasicDecode();
