@@ -51,7 +51,15 @@
     function encodePacked(sprite,paletteHex,rawMode){
       const {w,h,data}=sprite;
       let palStr=''; if(paletteHex&&paletteHex.length){
-        const cleaned=[]; for(let t of paletteHex) cleaned.push(t[0]==='#'?t.slice(1):t);
+        const cleaned=[];
+        for(let t of paletteHex){
+          t=t[0]==='#'?t.slice(1):t;
+          if(t.length===6){
+            const q=n=>Math.max(0,Math.min(15,Math.round(parseInt(n,16)/17))).toString(16);
+            t=q(t.slice(0,2))+q(t.slice(2,4))+q(t.slice(4,6));
+          }
+          cleaned.push(t.slice(0,3).toLowerCase());
+        }
         palStr=cleaned.join('.');
       }
       let rle='';
@@ -68,21 +76,49 @@
       }
       return b36(w)+'x'+b36(h)+'|'+palStr+'|'+rle;
     }
-  
+
+    function encodeWithBestOrder(sprite,paletteHex,rawMode=false){
+      const orders=[{id:'',map:null},{id:'Z',map:zigzagMap(sprite.w,sprite.h)}];
+      let best=null;
+      for(const o of orders){
+        const mapped=o.map?{w:sprite.w,h:sprite.h,data:(()=>{const d=new Uint8Array(sprite.data.length);for(let i=0;i<o.map.length;i++)d[i]=sprite.data[o.map[i]];return d;})(),palette:sprite.palette}:sprite;
+        const enc=encodePacked(mapped,paletteHex,rawMode);
+        const parts=enc.split('|');
+        const cand=o.id?parts[0]+'|'+parts[1]+'|'+o.id+parts[2]:enc;
+        if(!best||cand.length<best.length)best=cand;
+      }
+      return best;
+    }
+
+    function encodeAuto(sprite,paletteHex){
+      const a=encodeWithBestOrder(sprite,paletteHex,false);
+      const b=encodeWithBestOrder(sprite,paletteHex,true);
+      return a.length<=b.length?a:b;
+    }
+
     function decodePacked(str){
       const parts=String(str).split('|');
       const dims=(parts[0]||'').split('x');
       const w=p36(dims[0]||'0')|0, h=p36(dims[1]||'0')|0;
       const palette=makePalette((parts[1]||'').split(/[.,]/).filter(Boolean).map(t=>t[0]==='#'?t:'#'+t));
-      const rle=parts[2]||'';
-      const data=new Uint8Array(w*h); let i=0,n='';
+      let rle=parts[2]||'';
+      let order='';
+      if(rle[0]==='Z'){ order='Z'; rle=rle.slice(1); }
+      const tmp=new Uint8Array(w*h); let i=0,n='';
       for(const ch of rle){
         const isSym=(ch==='T')||(ch>='A'&&ch<='Z');
         if(isSym){
-          if(n===''){ data[i++]=symToIndex(ch); }
-          else{ const count=p36(n)|0, idx=symToIndex(ch); for(let c=0;c<count;c++) data[i++]=idx; }
+          if(n===''){ tmp[i++]=symToIndex(ch); }
+          else{ const count=p36(n)|0, idx=symToIndex(ch); for(let c=0;c<count;c++) tmp[i++]=idx; }
           n='';
         }else n+=ch;
+      }
+      let data=tmp;
+      if(order==='Z'){
+        const m=zigzagMap(w,h);
+        const out=new Uint8Array(tmp.length);
+        for(let j=0;j<m.length;j++) out[m[j]]=tmp[j];
+        data=out;
       }
       return{w,h,data,palette};
     }
@@ -110,6 +146,7 @@
     }
   
     const mapIndices=(w,h,fn)=>{const out=new Uint32Array(w*h);let i=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)out[i++]=fn(x,y);return out;};
+    const zigzagMap=(w,h)=>{const m=new Uint32Array(w*h);let i=0;for(let y=0;y<h;y++){if(y%2===0){for(let x=0;x<w;x++)m[i++]=y*w+x;}else{for(let x=w-1;x>=0;x--)m[i++]=y*w+x;}}return m;};
     const remap=(s,w2,h2,m)=>{const out=new Uint8Array(w2*h2);for(let i=0;i<out.length;i++)out[i]=s.data[m[i]];return{w:w2,h:h2,data:out,palette:s.palette.slice()};};
     const flipH=s=>remap(s,s.w,s.h,mapIndices(s.w,s.h,(x,y)=>y*s.w+(s.w-1-x)));
     const flipV=s=>remap(s,s.w,s.h,mapIndices(s.w,s.h,(x,y)=>(s.h-1-y)*s.w+x));
@@ -120,7 +157,7 @@
     const toImage=(s,scale)=>{const img=new Image(); img.src=toCanvas(s,scale||1).toDataURL('image/png'); return img;};
     const toBitmap=(s,scale)=>{const c=toCanvas(s,scale||1); return (typeof window!=='undefined'&&window.createImageBitmap)?window.createImageBitmap(c):Promise.resolve(null);};
   
-    const TinySprites={create,makePalette,encodePacked,decodePacked,toImageData,toCanvas,draw,flipH,flipV,rot90,rot180,rot270,toImage,toBitmap};
+    const TinySprites={create,makePalette,encodePacked,encodeWithBestOrder,encodeAuto,decodePacked,toImageData,toCanvas,draw,flipH,flipV,rot90,rot180,rot270,toImage,toBitmap};
     if(typeof window!=='undefined')window.TinySprites=TinySprites;
     if(typeof module!=='undefined'&&module.exports)module.exports=TinySprites;
   })();

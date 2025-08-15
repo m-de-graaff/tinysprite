@@ -242,6 +242,8 @@ TinySprites includes a powerful web-based sprite editor:
 4. Add colors to your palette
 5. Export as packed code or PNG
 
+Or can be found [here](https://m-de-graaff.github.io/tinysprite/)!
+
 ## 📱 Demo Page
 
 Test sprites and packed codes in the demo page:
@@ -250,6 +252,8 @@ Test sprites and packed codes in the demo page:
 2. Input any packed code
 3. See the sprite rendered instantly
 4. Browse built-in examples
+
+Or can be found [here](https://m-de-graaff.github.io/tinysprite/demo)!
 
 ## 🔧 Development
 

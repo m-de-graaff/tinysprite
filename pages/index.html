@@ -289,15 +289,15 @@
   function drawPreview(){ const fw=+$('#fitw').value||160, fh=+$('#fith').value||160; prev.width=fw; prev.height=fh; TinySprites.draw(pctx, sprite, 0,0, { fit:{w:fw,h:fh} }); }
   function updateStats(){
     const palTokens=paletteHex.map(h=>h.replace('#',''));
-    const rle = TinySprites.encodePacked(sprite, palTokens, false);
-    const raw = TinySprites.encodePacked(sprite, palTokens, true);
-    const best = (rle.length<=raw.length)? rle : raw;
+    const rle = TinySprites.encodeWithBestOrder(sprite, palTokens, false);
+    const raw = TinySprites.encodeWithBestOrder(sprite, palTokens, true);
+    const best = TinySprites.encodeAuto(sprite, palTokens);
     const bp=(s)=>new Blob([s]).size;
     $('#stats').textContent =
 `W×H: ${W}×${H}
 Palette: T${paletteHex.length > 0 ? ' + ' + paletteHex.map((h,i)=>String.fromCharCode(65+i)+':'+h).join(', ') : ''}
-RLE: ${rle.length} chars (~${bp(rle)} B)
-RAW: ${raw.length} chars (~${bp(raw)} B)
+RLE*: ${rle.length} chars (~${bp(rle)} B)
+RAW*: ${raw.length} chars (~${bp(raw)} B)
 AUTO → ${best.length} chars`;
   }
   function updateStatus(){
@@ -395,9 +395,9 @@ AUTO → ${best.length} chars`;
   $('#undoBtn').onclick=doUndo; $('#redoBtn').onclick=doRedo;
 
   function currentEncoding(){ return (document.querySelector('input[name="enc"]:checked')||{}).value||'auto'; }
-  function packedRLE(){ return TinySprites.encodePacked(sprite, paletteHex.map(h=>h.slice(1)), false); }
-  function packedRAW(){ return TinySprites.encodePacked(sprite, paletteHex.map(h=>h.slice(1)), true); }
-  function packedAuto(){ const a=packedRLE(), b=packedRAW(); return a.length<=b.length?a:b; }
+  function packedRLE(){ return TinySprites.encodeWithBestOrder(sprite, paletteHex.map(h=>h.slice(1)), false); }
+  function packedRAW(){ return TinySprites.encodeWithBestOrder(sprite, paletteHex.map(h=>h.slice(1)), true); }
+  function packedAuto(){ return TinySprites.encodeAuto(sprite, paletteHex.map(h=>h.slice(1))); }
 
   $('#copyPacked').onclick=async()=>{ await copyText(packedAuto()); };
   $('#copyRLE').onclick=async()=>{ await copyText(packedRLE()); };
