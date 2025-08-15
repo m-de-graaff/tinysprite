@@ -254,6 +254,7 @@ Test sprites and packed codes in the demo page:
 ## 🔧 Development
 
 ### Building
+
 ```bash
 npm install
 npm run build          # Build minified library
@@ -263,11 +264,13 @@ npm run build-demo     # Inject library.json into demo.html
 ### Automated Build Process
 
 The GitHub Actions workflow automatically:
+
 1. **Injects library.json content** into demo.html during deployment
 2. **Updates the sprite library** in the demo page automatically
 3. **Ensures consistency** between library.json and the demo page
 
 This means you can:
+
 - Add new sprites to `pages/library.json`
 - Push to main branch
 - The demo page automatically includes the new sprites
