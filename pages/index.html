@@ -27,12 +27,18 @@
                 color: var(--ink);
                 font: 14px/1.45 system-ui, Segoe UI, Inter, Roboto, sans-serif;
             }
+            .topbar {
+                background: #2d2f3e;
+                border-bottom: 1px solid #000;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
             .app {
                 display: grid;
                 grid-template-columns: 400px 1fr 320px;
                 gap: 12px;
                 padding: 12px;
-                height: 100%;
+                height: calc(100% - 40px);
             }
             @media (max-width: 1200px) {
                 .app {
@@ -128,6 +134,12 @@
                 border: 1px solid var(--line);
                 border-radius: 12px;
                 background: conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/20px 20px;
+            }
+            #tilemap {
+                image-rendering: pixelated;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                background: #0f1422;
             }
             .pill {
                 background: #0b0f19;
@@ -254,6 +266,7 @@
         </style>
     </head>
     <body>
+        <header class="topbar">TinySprite Editor</header>
         <div class="app">
             <!-- Left: Controls -->
             <section class="card">
@@ -345,6 +358,20 @@
             <section class="card" style="min-height: 0;">
                 <h2>Editor</h2>
                 <canvas id="stage" width="512" height="512"></canvas>
+                <h2 style="margin-top:10px;">Tilemap</h2>
+                <div class="row">
+                    <label>W <input id="mapW" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
+                    <label>H <input id="mapH" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
+                    <button class="btn" id="applyMap">Apply</button>
+                </div>
+                <canvas id="tilemap" width="256" height="256" style="margin-top:8px;"></canvas>
+                <div class="row" style="margin-top:8px;">
+                    <label>X1 <input id="rX1" type="number" value="0" style="width:40px;" /></label>
+                    <label>Y1 <input id="rY1" type="number" value="0" style="width:40px;" /></label>
+                    <label>X2 <input id="rX2" type="number" value="0" style="width:40px;" /></label>
+                    <label>Y2 <input id="rY2" type="number" value="0" style="width:40px;" /></label>
+                    <button class="btn" id="makeAnim">Load Anim</button>
+                </div>
             </section>
 
             <!-- Right: Preview & Stats -->
@@ -356,6 +383,17 @@
                 </div>
                 <canvas id="preview" width="160" height="160" style="margin-top: 8px;"></canvas>
                 <p style="color: var(--muted); font-size: 12px;">Nearest‑neighbor. Checkerboard = transparency.</p>
+                <h2 style="margin-top:10px;">Animation</h2>
+                <div class="row">
+                    <button class="btn" id="prevFrame">◀</button>
+                    <div id="frameLabel" class="pill">1/1</div>
+                    <button class="btn" id="nextFrame">▶</button>
+                </div>
+                <div class="row" style="margin-top:6px;">
+                    <button class="btn" id="addFrame">Add</button>
+                    <button class="btn warn" id="delFrame">Del</button>
+                    <button class="btn" id="playAnim">Play</button>
+                </div>
 
                 <h2 style="margin-top: 10px;">Data</h2>
                 <div id="stats" class="stat"></div>
@@ -535,6 +573,8 @@
                 gctx = grid.getContext("2d");
             const prev = $("#preview"),
                 pctx = prev.getContext("2d");
+            const mapCanvas = $("#tilemap"),
+                mctx = mapCanvas.getContext("2d");
 
             // ===== state =====
             let W = 16,
@@ -557,6 +597,13 @@
             let sprite = TinySprites.create(W, H, 0, []);
             TinySprites.defaultW = DEF_W;
             TinySprites.defaultH = DEF_H;
+            let frames = [sprite],
+                currentFrame = 0,
+                playing = false,
+                playTimer = null;
+            let mapW = 8,
+                mapH = 8,
+                tilemap = TinySprites.loadTilemap(mapW, mapH, W, H);
 
             // ===== undo =====
             function save() {
@@ -687,10 +734,14 @@
                 W = w | 0;
                 H = h | 0;
                 sprite = TinySprites.create(W, H, 0, paletteHex);
+                frames = [sprite];
+                currentFrame = 0;
+                updateFrameLabel();
                 activeIndex = paletteHex.length > 0 ? 1 : 0;
                 $("#fitw").value = W * 10;
                 $("#fith").value = H * 10;
                 drawAll();
+                drawTilemap();
             }
             function layout() {
                 const d = window.devicePixelRatio || 1,
@@ -744,6 +795,33 @@
                 prev.height = fh;
                 TinySprites.draw(pctx, sprite, 0, 0, { fit: { w: fw, h: fh } });
             }
+            function drawTilemap() {
+                const tw = mapCanvas.width / mapW,
+                    th = mapCanvas.height / mapH;
+                mctx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+                for (let y = 0; y < mapH; y++)
+                    for (let x = 0; x < mapW; x++) {
+                        const spr = tilemap.get(x, y);
+                        if (spr)
+                            TinySprites.draw(mctx, spr, x * tw, y * th, {
+                                fit: { w: tw, h: th },
+                            });
+                        mctx.strokeStyle = "rgba(255,255,255,0.1)";
+                        mctx.strokeRect(x * tw + 0.5, y * th + 0.5, tw, th);
+                    }
+            }
+            function updateFrameLabel() {
+                $("#frameLabel").textContent = `${currentFrame + 1}/${frames.length}`;
+            }
+            function switchFrame(i) {
+                if (i < 0 || i >= frames.length) return;
+                frames[currentFrame] = sprite;
+                currentFrame = i;
+                sprite = frames[currentFrame];
+                drawAll();
+                updateFrameLabel();
+                drawTilemap();
+            }
             function updateStats() {
                 const palTokens = paletteHex;
                 const rle = encodeWithBestOrder(sprite, palTokens, false);
@@ -771,6 +849,7 @@ AUTO → ${best.length} chars`;
                 updateStats();
                 updateStatus();
                 rebuildPaletteUI();
+                drawTilemap();
             }
 
             // ===== editor helpers =====
@@ -1006,6 +1085,55 @@ AUTO → ${best.length} chars`;
                 drawAll();
             };
 
+            $("#addFrame").onclick = () => {
+                frames[currentFrame] = sprite;
+                frames.push(TinySprites.create(W, H, 0, paletteHex));
+                switchFrame(frames.length - 1);
+            };
+            $("#delFrame").onclick = () => {
+                if (frames.length > 1) {
+                    frames.splice(currentFrame, 1);
+                    switchFrame(Math.max(0, currentFrame - 1));
+                }
+            };
+            $("#prevFrame").onclick = () => switchFrame((currentFrame - 1 + frames.length) % frames.length);
+            $("#nextFrame").onclick = () => switchFrame((currentFrame + 1) % frames.length);
+            $("#playAnim").onclick = () => {
+                playing = !playing;
+                $("#playAnim").textContent = playing ? "Stop" : "Play";
+                if (playing) playTimer = setInterval(() => switchFrame((currentFrame + 1) % frames.length), 200);
+                else clearInterval(playTimer);
+            };
+            $("#applyMap").onclick = () => {
+                mapW = cap(+$("#mapW").value, 1, 32);
+                mapH = cap(+$("#mapH").value, 1, 32);
+                tilemap.dimensions.width = mapW;
+                tilemap.dimensions.height = mapH;
+                drawTilemap();
+            };
+            mapCanvas.addEventListener("click", (e) => {
+                const r = mapCanvas.getBoundingClientRect();
+                const x = Math.floor(((e.clientX - r.left) / r.width) * mapW);
+                const y = Math.floor(((e.clientY - r.top) / r.height) * mapH);
+                tilemap.set(x, y, frames[currentFrame]);
+                drawTilemap();
+            });
+
+            $("#makeAnim").onclick = () => {
+                const x1 = cap(+$("#rX1").value, 0, mapW - 1);
+                const y1 = cap(+$("#rY1").value, 0, mapH - 1);
+                const x2 = cap(+$("#rX2").value, 0, mapW - 1);
+                const y2 = cap(+$("#rY2").value, 0, mapH - 1);
+                const anim = tilemap.loadAnimation(x1, y1, x2, y2);
+                if (anim.length) {
+                    frames = anim;
+                    currentFrame = 0;
+                    sprite = frames[0];
+                    drawAll();
+                    updateFrameLabel();
+                }
+            };
+
             $("#scale").oninput = drawPreview;
             $("#fitw").oninput = drawPreview;
             $("#fith").oninput = drawPreview;
@@ -1187,6 +1315,8 @@ AUTO → ${best.length} chars`;
             $("#fitw").value = W * 10;
             $("#fith").value = H * 10;
             drawAll();
+            drawTilemap();
+            updateFrameLabel();
         </script>
     </body>
 </html>
