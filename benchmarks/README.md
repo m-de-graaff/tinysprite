@@ -61,13 +61,13 @@ node image-optimizer.js <packed-sprite> [output-dir] [base-name]
 **Examples:**
 ```bash
 # Basic usage
-node image-optimizer.js "dx9|000.444.fd0.fff|5T2A3T..."
+node image-optimizer.js "<packed-sprite>"
 
 # With custom output directory
-node image-optimizer.js "dx9|000.444.fd0.fff|5T2A3T..." optimized
+node image-optimizer.js "<packed-sprite>" optimized
 
 # With custom base name
-node image-optimizer.js "dx9|000.444.fd0.fff|5T2A3T..." optimized my-sprite
+node image-optimizer.js "<packed-sprite>" optimized my-sprite
 ```
 
 ## 🎯 Optimization Levels
@@ -124,9 +124,10 @@ const levels = [
 ```javascript
 const optimizer = new SpriteOptimizer();
 const sprites = [
-  "dx9|000.444.fd0.fff|5T2A3T...",
-  "dx9|111.555.fd1.fff|6T3B4T..."
+  "<packed-sprite-1>",
+  "<packed-sprite-2>"
 ];
+
 
 for (const packed of sprites) {
   const sprite = optimizer.parsePackedSprite(packed);

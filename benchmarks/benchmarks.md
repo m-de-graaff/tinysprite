@@ -2,73 +2,74 @@
 
 ## 📊 Target Sprite Analysis
 
-**Packed String:** `dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T`
+**Packed String:** `"dx9|4000444fd0fff\u0001\u0001A\u0012\tA!\u0011\u0001\u0001C!\u0019\r%\u0002\u0001E!\u0001\u0011\u0005\u0003\u0012\u0001\u0001#\u0013\u0002\t\u0007\u0001\u0001E\u0003\u0011\u0001\t\u0003\u0002\tA\u0001\u0011#\u0001\tA\u0001A!\u0012+B\t\u0001\u0001A#\u0001\u0001\u0005\u000b\u0005\t\u0001\u0001\u0012\t\u0001\u0003Q)\u0015)\u0001"`
 
 | Property | Value |
 |----------|-------|
 | Dimensions | 13 × 9 pixels |
 | Total Pixels | 117 |
-| Packed Size | 108 characters |
-| Compression Ratio | 1.08x |
-| Palette Colors | 4 |
+| Packed Size | 93 characters |
+| Compression Ratio | 1.26x |
+| Palette Colors | 5 |
 
 ### Palette
 - **T (Transparent):** Checkerboard pattern
-- **A:** #000
-- **B:** #444
-- **C:** #fd0
-- **D:** #fff
+- **A:** 000
+- **B:** 444
+- **C:** fd0
+- **D:** fff
 
 ## 📁 Benchmark Files Comparison (Ranked by Size)
 
 | Rank | File | Type | Size | Comparison |
 |------|------|------|------|------------|
-| 1 | **sprite-optimized.webp** | WebP Image | 0.09 KB | 0.89x |
-| 2 | **WebP ultra-compressed** | WebP ultra-compressed | 0.09 KB | 0.89x |
-| 3 | **WebP high-compressed** | WebP high-compressed | 0.09 KB | 0.89x |
-| 4 | **WebP medium-compressed** | WebP medium-compressed | 0.09 KB | 0.89x |
-| 5 | **WebP low-compressed** | WebP low-compressed | 0.09 KB | 0.89x |
-| 🎯 | **TinySprites Packed** | TinySprites Format | 0.11 KB | - |
-| 7 | **sprite-optimized.png** | PNG Image | 0.15 KB | 1.39x |
-| 8 | **PNG ultra-compressed** | PNG ultra-compressed | 0.15 KB | 1.39x |
-| 9 | **PNG high-compressed** | PNG high-compressed | 0.15 KB | 1.39x |
-| 10 | **PNG medium-compressed** | PNG medium-compressed | 0.15 KB | 1.40x |
-| 11 | **PNG low-compressed** | PNG low-compressed | 0.15 KB | 1.43x |
-| 12 | **sprite-optimized.avif** | AVIF Image | 0.48 KB | 4.55x |
+| 🎯 | **TinySprites Packed** | TinySprites Format | 0.09 KB | - |
+| 2 | **sprite-optimized.webp** | WebP Image | 0.09 KB | 1.03x |
+| 3 | **WebP ultra-compressed** | WebP ultra-compressed | 0.09 KB | 1.03x |
+| 4 | **WebP high-compressed** | WebP high-compressed | 0.09 KB | 1.03x |
+| 5 | **WebP medium-compressed** | WebP medium-compressed | 0.09 KB | 1.03x |
+| 6 | **WebP low-compressed** | WebP low-compressed | 0.09 KB | 1.03x |
+| 7 | **sprite-optimized.png** | PNG Image | 0.15 KB | 1.61x |
+| 8 | **PNG ultra-compressed** | PNG ultra-compressed | 0.15 KB | 1.61x |
+| 9 | **PNG high-compressed** | PNG high-compressed | 0.15 KB | 1.61x |
+| 10 | **PNG medium-compressed** | PNG medium-compressed | 0.15 KB | 1.62x |
+| 11 | **PNG low-compressed** | PNG low-compressed | 0.15 KB | 1.66x |
+| 12 | **sprite-optimized.avif** | AVIF Image | 0.48 KB | 5.28x |
 
 ## 🏆 Benchmark Summary
 
-- **Smallest file:** sprite-optimized.webp (0.09 KB)
-- **Second smallest:** WebP ultra-compressed (0.09 KB)
+- **Smallest file:** TinySprites Packed (0.09 KB)
+- **Second smallest:** sprite-optimized.webp (0.09 KB)
 - **Largest file:** sprite-optimized.avif (0.48 KB)
-- **TinySprites packed:** 0.11 KB
+- **TinySprites packed:** 0.09 KB
 
 ✅ **TinySprites format is competitive with image formats**
 
 ## 📋 Packed Format Details
 
 ### Format Structure
-`[w36]x[h36]|[pal]|[data]`
+`{dims}|{cnt}{hex...}{order?}![data64]`
 
 - **Dimensions (base36):** 13×9 → `d×9`
 - **Palette Tokens:** 000, 444, fd0, fff
-- **Data Encoding:** Base36 RLE + Literal
+- **Data Encoding:** Base64 of 4bpp indices with XOR diff + RLE0
 
 ### Data Breakdown
-The packed data uses a combination of:
-- **RLE (Run-Length Encoding):** Number + Color (e.g., `5T` = 5 transparent pixels)
-- **Literal Colors:** Direct color references (e.g., `A` = color A, `T` = transparent)
+  The packed data uses a combination of:
+  - **4bpp packing:** Two pixel indices per byte
+  - **XOR differential:** XOR each byte with previous to improve RLE
+  - **Zero RLE:** Runs of zero bytes are compressed as `0 + count`
 
 ### Compression Analysis
 - **Raw pixel data:** 117 pixels
-- **Packed representation:** 108 characters
-- **Compression ratio:** 1.08x
-- **Space savings:** 7.7%
+- **Packed representation:** 93 characters
+- **Compression ratio:** 1.26x
+- **Space savings:** 20.5%
 
 ## 🔍 Technical Notes
 
-- **Base36 encoding** provides compact representation for numbers
-- **RLE compression** is effective for sprites with repeated colors
+- **Base64 encoding** avoids control characters for safe JSON and clipboard use
+- **XOR + RLE** make sequential pixel data highly compressible
 - **Palette optimization** reduces color data overhead
 - **Format efficiency** varies based on sprite complexity and color distribution
 
@@ -95,4 +96,4 @@ To run benchmarks on your own sprites:
 
 ---
 
-*Generated on 2025-08-15T17:18:36.771Z*
+*Generated on 2025-08-15T22:27:43.896Z*

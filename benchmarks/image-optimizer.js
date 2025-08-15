@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const TinySprites = require('../tinysprites.js');
 
 /**
  * TinySprites Image Optimizer using Sharp
@@ -21,75 +22,20 @@ class SpriteOptimizer {
   }
 
   /**
-   * Parse TinySprites packed format and convert to image data
+   * Parse TinySprites packed format using runtime decoder
    */
   parsePackedSprite(packed) {
-    const parts = packed.split('|');
-    if (parts.length < 3) {
-      throw new Error('Invalid packed format: expected [dimensions]|[palette]|[data]');
-    }
-    
-    const dimensions = parts[0];
-    const palette = parts[1];
-    const data = parts[2];
-    
-    // Parse dimensions (base36)
-    const [w, h] = dimensions.split('x').map(d => parseInt(d, 36));
-    
-    // Parse palette
-    const paletteColors = palette.split(/[.,]/).filter(Boolean).map(c => '#' + c);
-    
-    // Parse data (base36 RLE)
-    let pixels = [];
-    let i = 0;
-    while (i < data.length) {
-      const char = data[i];
-      if (char >= '0' && char <= '9') {
-        // RLE: number + color
-        const count = parseInt(char, 36);
-        const colorIndex = data[i + 1];
-        const color = colorIndex === 'T' ? 0 : colorIndex.charCodeAt(0) - 64; // A=1, B=2, etc.
-        for (let j = 0; j < count; j++) {
-          pixels.push(color);
-        }
-        i += 2;
-      } else {
-        // Literal color
-        const color = char === 'T' ? 0 : char.charCodeAt(0) - 64;
-        pixels.push(color);
-        i++;
-      }
-    }
-    
+    const s = TinySprites.decodePacked(packed);
     return {
-      width: w,
-      height: h,
-      palette: paletteColors,
-      data: pixels,
+      width: s.w,
+      height: s.h,
+      palette: s.palette,
+      data: Array.from(s.data),
       packedLength: packed.length,
-      rawSize: w * h,
-      compressionRatio: ((w * h) / packed.length).toFixed(2)
+      rawSize: s.w * s.h,
+      compressionRatio: ((s.w * s.h) / packed.length).toFixed(2)
     };
   }
-
-  /**
-   * Convert hex color to RGBA array
-   */
-  hexToRgba(hex) {
-    hex = String(hex).replace('#', '').trim().toLowerCase();
-    let r = 0, g = 0, b = 0, a = 255;
-    if (hex.length === 3) { 
-      r = parseInt(hex[0] + hex[0], 16); 
-      g = parseInt(hex[1] + hex[1], 16); 
-      b = parseInt(hex[2] + hex[2], 16); 
-    } else if (hex.length === 6) { 
-      r = parseInt(hex.slice(0, 2), 16); 
-      g = parseInt(hex.slice(2, 4), 16); 
-      b = parseInt(hex.slice(4, 6), 16); 
-    }
-    return [r, g, b, a];
-  }
-
 
 
   /**
@@ -98,17 +44,17 @@ class SpriteOptimizer {
   createRgbaBuffer(sprite) {
     const { width, height, data, palette } = sprite;
     const rgba = Buffer.alloc(width * height * 4);
-    
+
     for (let i = 0; i < data.length; i++) {
       const colorIndex = data[i];
-      const color = colorIndex === 0 ? [0, 0, 0, 0] : this.hexToRgba(palette[colorIndex - 1]);
+      const color = palette[colorIndex] || [0, 0, 0, 0];
       const pos = i * 4;
       rgba[pos] = color[0];
       rgba[pos + 1] = color[1];
       rgba[pos + 2] = color[2];
       rgba[pos + 3] = color[3];
     }
-    
+
     return rgba;
   }
 
@@ -336,7 +282,7 @@ async function main() {
     console.log('Usage: node image-optimizer.js <packed-sprite> [output-dir] [base-name]');
     console.log('');
     console.log('Example:');
-    console.log('  node image-optimizer.js "dx9|000.444.fd0.fff|5T2A3T..." optimized sprites');
+    console.log('  node image-optimizer.js "<packed-sprite>" optimized sprites');
     console.log('');
     console.log('This will generate optimized images in PNG, WebP, and AVIF formats');
     console.log('with multiple compression levels for each format.');

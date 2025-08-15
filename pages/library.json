@@ -4,12 +4,12 @@
   "sprites": [
     {
       "id": "cat-9x13",
-      "name": "Cat",
-      "description": "A cute 9x13 cat sprite",
-      "category": "animals",
-      "author": "m-de-graaff",
-      "packedCode": "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T"
-    }
+      "name": "Checker",
+      "description": "Red/blue 2x2 checker",
+      "category": "samples",
+      "author": "tinysprites",
+      "packedCode": "2|2f0000f!EjM="
+  }
   ],
   "categories": [
     "animals"

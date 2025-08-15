@@ -450,20 +450,10 @@
             const rot180 = (s) => flipV(flipH(s));
             const rot270 = (s) => rot90(rot180(s));
 
-            function b128encode(bytes) {
-                let out = "",
-                    acc = 0,
-                    bits = 0;
-                for (let i = 0; i < bytes.length; i++) {
-                    acc = (acc << 8) | bytes[i];
-                    bits += 8;
-                    while (bits >= 7) {
-                        bits -= 7;
-                        out += String.fromCharCode((acc >> bits) & 127);
-                    }
-                }
-                if (bits > 0) out += String.fromCharCode((acc << (7 - bits)) & 127);
-                return out;
+            function b64encode(bytes) {
+                let bin = "";
+                for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+                return btoa(bin);
             }
 
             function encodePacked(sprite, paletteHex) {
@@ -493,7 +483,7 @@
                         comp.push(0, c);
                     } else comp.push(b);
                 }
-                const data128 = b128encode(Uint8Array.from(comp));
+                const data64 = b64encode(Uint8Array.from(comp));
                 let dims = "";
                 if (w !== DEF_W || h !== DEF_H) {
                     if (w === h) dims = b36(w);
@@ -503,7 +493,7 @@
                         if (h !== DEF_H) dims += b36(h);
                     }
                 }
-                return dims + "|" + map + data128;
+                return dims + "|" + map + "!" + data64;
             }
 
             function encodeWithBestOrder(sprite, paletteHex) {

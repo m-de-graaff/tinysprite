@@ -3,12 +3,12 @@
  * MIT License
  *
  * Packed format:
- *   Format: "{dims}|{cnt}{hex...}{order?}{data128}" where pixel data is
- *            palette indices packed 2-per-byte, XOR diffed, RLE0, then base128
+ *   Format: "{dims}|{cnt}{hex...}{order?}!{data64}" where pixel data is
+ *            palette indices packed 2-per-byte, XOR diffed, RLE0, then base64
  *
  * API:
  *   create, makePalette, decodePacked,
- *   toImageData, toCanvas, draw,
+ *   toImageData, toCanvas, toDataURL, toImage, toSvg, draw,
  *   fromImage, loadImage
  */
 
@@ -19,6 +19,9 @@
       const v = parseInt(hex.replace("#", ""), 16);
       return [((v >> 8) & 15) * 17, ((v >> 4) & 15) * 17, (v & 15) * 17, 255];
   };
+
+  const rgbaToHex = ([r, g, b]) =>
+      "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 
   function makePalette(hexTokens) {
       const pal = [[0, 0, 0, 0]];
@@ -84,20 +87,15 @@
       });
   }
 
-  function b128decode(str) {
-      const out = [];
-      let acc = 0,
-          bits = 0;
-      for (let i = 0; i < str.length; i++) {
-          acc = (acc << 7) | str.charCodeAt(i);
-          bits += 7;
-          while (bits >= 8) {
-              bits -= 8;
-              out.push((acc >> bits) & 255);
-          }
-      }
-      return Uint8Array.from(out);
-  }
+  function b64decode(str) {
+    if (typeof atob === "function") {
+        const bin = atob(str);
+        const out = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+    }
+    return Uint8Array.from(Buffer.from(str, "base64"));
+}
 
   function decodePacked(str) {
       const parts = String(str).split("|");
@@ -128,9 +126,9 @@
           order = "Z";
           pos++;
       }
-      const data128 = payload.slice(pos);
+      const dataStr = payload.slice(pos);
       const totalBytes = (w * h + 1) >> 1;
-      const comp = b128decode(data128);
+      const comp = dataStr[0] === "!" ? b64decode(dataStr.slice(1)) : b128decode(dataStr);
       const xor = [];
       for (let i = 0; i < comp.length; i++) {
           const b = comp[i];
@@ -177,45 +175,79 @@
   }
 
   function toCanvas(sprite, scale = 1) {
-      const { w, h } = sprite,
-          cw = Math.max(1, Math.round(w * scale)),
-          ch = Math.max(1, Math.round(h * scale));
-      const c = document.createElement("canvas");
-      c.width = cw;
-      c.height = ch;
-      const ctx = c.getContext("2d", { alpha: true });
-      ctx.imageSmoothingEnabled = false;
-      const raw = document.createElement("canvas");
-      raw.width = w;
-      raw.height = h;
-      raw.getContext("2d").putImageData(toImageData(sprite), 0, 0);
-      ctx.drawImage(raw, 0, 0, cw, ch);
-      return c;
-  }
+    const { w, h } = sprite,
+        cw = Math.max(1, Math.round(w * scale)),
+        ch = Math.max(1, Math.round(h * scale));
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const ctx = c.getContext("2d", { alpha: true });
+    ctx.imageSmoothingEnabled = false;
+    const raw = document.createElement("canvas");
+    raw.width = w;
+    raw.height = h;
+    raw.getContext("2d").putImageData(toImageData(sprite), 0, 0);
+    ctx.drawImage(raw, 0, 0, cw, ch);
+    return c;
+}
 
-  function draw(ctx, sprite, x = 0, y = 0, opts = {}) {
-      const { w, h } = sprite;
-      let z = 1;
-      if (opts.fit?.w && opts.fit?.h) z = Math.min(opts.fit.w / w, opts.fit.h / h);
-      else if (opts.scale) z = opts.scale;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(toCanvas(sprite, z), x | 0, y | 0);
-  }
+function toDataURL(sprite, scale = 1, type = "image/png") {
+  return toCanvas(sprite, scale).toDataURL(type);
+}
 
-  const zigzagMap = (w, h) => {
-      const m = new Uint32Array(w * h);
-      let i = 0;
-      for (let y = 0; y < h; y++) {
-          if (y % 2 === 0) {
-              for (let x = 0; x < w; x++) m[i++] = y * w + x;
+function toImage(sprite, scale = 1, type = "image/png") {
+  const img = new Image();
+  img.src = toDataURL(sprite, scale, type);
+  return img;
+}
+
+function toSvg(sprite, scale = 1) {
+  const { w, h, data, palette } = sprite;
+  const s = Math.max(1, Math.round(scale));
+  let out = `<svg xmlns="http:\/\/www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * s}" height="${h * s}">`;
+  for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+          const idx = data[y * w + x];
+          if (!idx) continue;
+          const [r, g, b, a] = palette[idx] || [0, 0, 0, 0];
+          if (a === 0) continue;
+          const hex = rgbaToHex([r, g, b]);
+          if (a === 255) {
+              out += `<rect x="${x}" y="${y}" width="1" height="1" fill="${hex}"/>`;
           } else {
-              for (let x = w - 1; x >= 0; x--) m[i++] = y * w + x;
+              out += `<rect x="${x}" y="${y}" width="1" height="1" fill="${hex}" fill-opacity="${(
+                  a / 255
+              ).toFixed(2)}"/>`;
           }
       }
-      return m;
-  };
+  }
+  out += "</svg>";
+  return out;
+}
 
-  const TinySprites = { defaultW: 16, defaultH: 16, create, makePalette, decodePacked, toImageData, toCanvas, draw, fromImage, loadImage };
-  if (typeof window !== "undefined") window.TinySprites = TinySprites;
-  if (typeof module !== "undefined" && module.exports) module.exports = TinySprites;
+function draw(ctx, sprite, x = 0, y = 0, opts = {}) {
+    const { w, h } = sprite;
+    let z = 1;
+    if (opts.fit?.w && opts.fit?.h) z = Math.min(opts.fit.w / w, opts.fit.h / h);
+    else if (opts.scale) z = opts.scale;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(toCanvas(sprite, z), x | 0, y | 0);
+}
+
+const zigzagMap = (w, h) => {
+    const m = new Uint32Array(w * h);
+    let i = 0;
+    for (let y = 0; y < h; y++) {
+        if (y % 2 === 0) {
+            for (let x = 0; x < w; x++) m[i++] = y * w + x;
+        } else {
+            for (let x = w - 1; x >= 0; x--) m[i++] = y * w + x;
+        }
+    }
+    return m;
+};
+
+const TinySprites = { defaultW: 16, defaultH: 16, create, makePalette, decodePacked, toImageData, toCanvas, toDataURL, toImage, toSvg, draw, fromImage, loadImage };
+if (typeof window !== "undefined") window.TinySprites = TinySprites;
+if (typeof module !== "undefined" && module.exports) module.exports = TinySprites;
 })();

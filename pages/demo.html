@@ -121,7 +121,7 @@
                         <div style="margin-top: 6px;"><input type="file" id="runtimeUpload" accept=".js" /></div>
                         <div id="status" class="status" style="display: none;"></div>
                         <div style="margin-top: 12px;">
-                            <small>Format: <code>[dims?]|[cnt][hex...][order?][data128]</code> — palette count followed by RGB triples; data is base128-encoded 4bpp indices with optional <code>Z</code> scan order.</small>
+                          <small>Format: <code>[dims?]|[cnt][hex...][order?]![data64]</code> — palette count followed by RGB triples; data is base64-encoded 4bpp indices with optional <code>Z</code> scan order.</small>
                         </div>
                     </div>
                     <div class="card" style="margin: 0;">
@@ -162,8 +162,8 @@
                     const s = document.createElement("script");
                     s.textContent = txt;
                     document.body.appendChild(s);
-                    document.getElementById("defW").value = TinySprites.defaultW;
-                    document.getElementById("defH").value = TinySprites.defaultH;
+                    TinySprites.defaultW = +document.getElementById("defW").value || TinySprites.defaultW;
+                    TinySprites.defaultH = +document.getElementById("defH").value || TinySprites.defaultH;
                 });
                 const code = new URLSearchParams(location.search).get("code");
                 if (code) {
@@ -178,23 +178,23 @@
                 try {
                     console.log("Decoding packed code:", code);
                     console.log("Default dimensions:", TinySprites.defaultW, "x", TinySprites.defaultH);
-
+                    
                     currentSprite = TinySprites.decodePacked(code);
-
+                    
                     console.log("Decoded sprite:", currentSprite);
                     console.log("Sprite dimensions:", currentSprite.w, "x", currentSprite.h);
                     console.log("Sprite data length:", currentSprite.data.length);
                     console.log("Sprite palette length:", currentSprite.palette.length);
-
+                    
                     // Validate sprite before displaying
                     if (!currentSprite.w || !currentSprite.h || currentSprite.w <= 0 || currentSprite.h <= 0) {
                         throw new Error(`Invalid sprite dimensions: ${currentSprite.w} x ${currentSprite.h}`);
                     }
-
+                    
                     if (!currentSprite.data || currentSprite.data.length !== currentSprite.w * currentSprite.h) {
                         throw new Error(`Data length mismatch: expected ${currentSprite.w * currentSprite.h}, got ${currentSprite.data?.length || 0}`);
                     }
-
+                    
                     displaySprite(currentSprite);
                     showSpriteInfo(currentSprite);
                     showStatus("Sprite decoded successfully!", "success");
@@ -207,20 +207,20 @@
             function displaySprite(sprite, scale = 4) {
                 console.log("Displaying sprite:", sprite);
                 console.log("Scale:", scale);
-
+                
                 const c = document.getElementById("mainCanvas");
                 const ctx = c.getContext("2d");
-
+                
                 console.log("Canvas dimensions:", c.width, "x", c.height);
                 console.log("Sprite dimensions:", sprite.w, "x", sprite.h);
-
+                
                 ctx.clearRect(0, 0, c.width, c.height);
-
+                
                 const x = (c.width - sprite.w * scale) / 2;
                 const y = (c.height - sprite.h * scale) / 2;
-
+                
                 console.log("Drawing at position:", x, y);
-
+                
                 try {
                     TinySprites.draw(ctx, sprite, x, y, { scale });
                     console.log("Sprite drawn successfully");
@@ -311,21 +311,24 @@
 
         <!-- Auto-injected library.json content -->
         <script id="ts-library" type="application/json">
-            {
-                "version": "1.0.0",
-                "description": "Community sprite library for TinySprites",
-                "sprites": [
-                    {
-                        "id": "cat-9x13",
-                        "name": "Cat",
-                        "description": "A cute 9x13 cat sprite",
-                        "category": "animals",
-                        "author": "m-de-graaff",
-                        "packedCode": "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T"
-                    }
-                ],
-                "categories": ["animals"]
-            }
-        </script>
+    {
+  "version": "1.0.0",
+  "description": "Community sprite library for TinySprites",
+  "sprites": [
+    {
+      "id": "cat-9x13",
+      "name": "Checker",
+      "description": "Red/blue 2x2 checker",
+      "category": "samples",
+      "author": "tinysprites",
+      "packedCode": "2|2f0000f!EjM="
+  }
+  ],
+  "categories": [
+    "animals"
+  ]
+}
+
+  </script>
     </body>
 </html>

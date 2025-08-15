@@ -12,6 +12,7 @@ A lightweight, zero-dependency JavaScript library for creating, manipulating, an
 - **Powerful API**: Create, manipulate, and render sprites
 - **Efficient encoding**: Compact packed format for sharing
 - **Canvas integration**: Easy rendering to HTML5 Canvas
+- **Lossless scaling**: Export sprites as crisp SVGs or data URLs
 - **Transformations**: Flip, rotate, and manipulate sprites
 - **Visual editor**: Built-in web-based sprite editor
 - **Cross-platform**: Works in browsers and Node.js
@@ -120,6 +121,32 @@ const canvas = TinySprites.toCanvas(sprite, 4);
 document.body.appendChild(canvas);
 ```
 
+#### `TinySprites.toDataURL(sprite, scale, type)`
+
+Gets a base64 data URL of the sprite rendered at the desired scale.
+
+```javascript
+const url = TinySprites.toDataURL(sprite, 8); // image/png by default
+```
+
+#### `TinySprites.toImage(sprite, scale, type)`
+
+Creates an `HTMLImageElement` from the sprite for easy DOM placement.
+
+```javascript
+const img = TinySprites.toImage(sprite, 2);
+document.body.appendChild(img);
+```
+
+#### `TinySprites.toSvg(sprite, scale)`
+
+Generates a vector SVG string allowing perfectly crisp scaling at any size.
+
+```javascript
+const svg = TinySprites.toSvg(sprite, 10);
+document.body.innerHTML = svg;
+```
+
 #### `TinySprites.toImageData(sprite)`
 
 Converts sprite to ImageData for advanced canvas operations.
@@ -134,13 +161,13 @@ ctx.putImageData(imageData, 0, 0);
 
 TinySprites uses a compact packed format:
 
-`{dims}|{cnt}{hex...}{order?}{data128}`
+`{dims}|{cnt}{hex...}{order?}![data64]`
 
 - **dims**: omit to use defaults; if w==h use a single number, otherwise `{w?}x{h?}` with sides blank for defaults
 - **cnt**: base36 count of palette colors (excluding transparent)
 - **hex...**: 3-digit RGB tokens for each color
 - **order?**: optional scan-order char like `Z`
-- **data128**: base128-encoded 4bpp indices (two pixels per byte) using XOR diff and zero RLE
+- **data64**: base64-encoded 4bpp indices (two pixels per byte) using XOR diff and zero RLE
 
 ### Example Packed String
 

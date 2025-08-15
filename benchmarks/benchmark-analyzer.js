@@ -4,58 +4,111 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-// The sprite to benchmark
-const TARGET_SPRITE = "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T";
+// Add TinySprites functions for Node.js environment
+function b128decode(str) {
+  const out = [];
+  let acc = 0, bits = 0;
+  for (let i = 0; i < str.length; i++) {
+    // Characters are stored with an offset to avoid NUL (\x00) in the packed
+    // string. Subtract 1 to recover the original 7-bit value, but gracefully
+    // handle legacy data that may not include the offset.
+    const v = str.charCodeAt(i);
+    acc = (acc << 7) | (v ? v - 1 : 0);
+    bits += 7;
+    while (bits >= 8) {
+      bits -= 8;
+      out.push((acc >> bits) & 255);
+    }
+  }
+  return Uint8Array.from(out);
+}
+
+function hexToRgba(hex) {
+  const v = parseInt(hex.replace("#", ""), 16);
+  return [((v >> 8) & 15) * 17, ((v >> 4) & 15) * 17, (v & 15) * 17, 255];
+}
+
+function decodePacked(str) {
+  const parts = String(str).split("|");
+  const dimStr = parts[0] || "";
+  let w = 13, h = 9; // Default dimensions
+  if (dimStr) {
+    if (dimStr.includes("x")) {
+      const [ws, hs] = dimStr.split("x");
+      if (ws) w = parseInt(ws, 36) | 0;
+      if (hs) h = parseInt(hs, 36) | 0;
+    } else {
+      w = h = parseInt(dimStr, 36) | 0;
+    }
+  }
+  const payload = parts[1] || "";
+  if (!payload) return { w, h, data: new Uint8Array(w * h), palette: [[0, 0, 0, 0]] };
+  
+  let pos = 0;
+  const count = parseInt(payload[pos++], 36) | 0;
+  const palette = [[0, 0, 0, 0]];
+  for (let i = 0; i < count; i++) {
+    const hex = payload.slice(pos, pos + 3);
+    pos += 3;
+    palette.push(hexToRgba(hex));
+  }
+  
+  let order = "";
+  if (payload[pos] === "Z") {
+    order = "Z";
+    pos++;
+  }
+  
+  const data128 = payload.slice(pos);
+  const totalBytes = (w * h + 1) >> 1;
+  const comp = b128decode(data128);
+  
+  const xor = [];
+  for (let i = 0; i < comp.length; i++) {
+    const b = comp[i];
+    if (b === 0 && i + 1 < comp.length) {
+      const c = comp[++i];
+      for (let k = 0; k < c; k++) xor.push(0);
+    } else xor.push(b);
+  }
+  
+  const packed = new Uint8Array(totalBytes);
+  let prev = 0;
+  for (let i = 0; i < totalBytes; i++) {
+    const val = (xor[i] ^ prev) & 255;
+    packed[i] = val;
+    prev = val;
+  }
+  
+  const data = new Uint8Array(w * h);
+  let di = 0;
+  for (let i = 0; i < packed.length; i++) {
+    const byte = packed[i];
+    data[di++] = byte >> 4;
+    if (di < w * h) data[di++] = byte & 15;
+  }
+  
+  return { w, h, data, palette };
+}
+
+const TinySprites = { decodePacked };
+
+// The sprite to benchmark (new packed format with base64 data)
+const TARGET_SPRITE =
+  "dx9|4000444fd0fff\x01\x01A\x12\tA!\x11\x01\x01C!\x19\r%\x02\x01E!\x01\x11\x05\x03\x12\x01\x01#\x13\x02\t\x07\x01\x01E\x03\x11\x01\t\x03\x02\tA\x01\x11#\x01\tA\x01A!\x12+B\t\x01\x01A#\x01\x01\x05\x0b\x05\t\x01\x01\x12\t\x01\x03Q)\x15)\x01";
 
 console.log('🔍 Analyzing sprite and benchmarks with Sharp optimization...\n');
 
-// Parse the packed sprite
 function parsePackedSprite(packed) {
-  const parts = packed.split('|');
-  if (parts.length < 3) {
-    throw new Error('Invalid packed format');
-  }
-  
-  const dimensions = parts[0];
-  const palette = parts[1];
-  const data = parts[2];
-  
-  // Parse dimensions (base36)
-  const [w, h] = dimensions.split('x').map(d => parseInt(d, 36));
-  
-  // Parse palette
-  const paletteColors = palette.split(/[.,]/).filter(Boolean).map(c => '#' + c);
-  
-  // Parse data (base36 RLE)
-  let pixels = [];
-  let i = 0;
-  while (i < data.length) {
-    const char = data[i];
-    if (char >= '0' && char <= '9') {
-      // RLE: number + color
-      const count = parseInt(char, 36);
-      const colorIndex = data[i + 1];
-      const color = colorIndex === 'T' ? 0 : colorIndex.charCodeAt(0) - 64; // A=1, B=2, etc.
-      for (let j = 0; j < count; j++) {
-        pixels.push(color);
-      }
-      i += 2;
-    } else {
-      // Literal color
-      const color = char === 'T' ? 0 : char.charCodeAt(0) - 64;
-      pixels.push(color);
-      i++;
-    }
-  }
-  
+  const s = TinySprites.decodePacked(packed);
   return {
-    width: w,
-    height: h,
-    palette: paletteColors,
-    data: pixels,
+    width: s.w,
+    height: s.h,
+    palette: s.palette,
+    data: Array.from(s.data),
     packedLength: packed.length,
-    rawSize: w * h,
-    compressionRatio: ((w * h) / packed.length).toFixed(2)
+    rawSize: s.w * s.h,
+    compressionRatio: ((s.w * s.h) / packed.length).toFixed(2)
   };
 }
 
@@ -67,7 +120,7 @@ async function writeOptimizedPng(sprite, outPath, quality = 9, dither = 0) {
   const rgba = Buffer.alloc(width * height * 4);
   for (let i = 0; i < data.length; i++) {
     const colorIndex = data[i];
-    const color = colorIndex === 0 ? [0, 0, 0, 0] : hexToRgba(palette[colorIndex - 1]);
+    const color = palette[colorIndex] || [0, 0, 0, 0];
     const pos = i * 4;
     rgba[pos] = color[0];
     rgba[pos + 1] = color[1];
@@ -94,7 +147,7 @@ async function writeOptimizedWebP(sprite, outPath, quality = 80, lossless = true
   const rgba = Buffer.alloc(width * height * 4);
   for (let i = 0; i < data.length; i++) {
     const colorIndex = data[i];
-    const color = colorIndex === 0 ? [0, 0, 0, 0] : hexToRgba(palette[colorIndex - 1]);
+    const color = palette[colorIndex] || [0, 0, 0, 0];
     const pos = i * 4;
     rgba[pos] = color[0];
     rgba[pos + 1] = color[1];
@@ -128,7 +181,7 @@ async function writeOptimizedAvif(sprite, outPath, quality = 80) {
   const rgba = Buffer.alloc(width * height * 4);
   for (let i = 0; i < data.length; i++) {
     const colorIndex = data[i];
-    const color = colorIndex === 0 ? [0, 0, 0, 0] : hexToRgba(palette[colorIndex - 1]);
+    const color = palette[colorIndex] || [0, 0, 0, 0];
     const pos = i * 4;
     rgba[pos] = color[0];
     rgba[pos + 1] = color[1];
@@ -307,7 +360,7 @@ async function generateBenchmarkReport() {
     console.log('📊 SPRITE ANALYSIS');
     console.log('==================');
     console.log(`Dimensions: ${sprite.width}×${sprite.height} pixels`);
-    console.log(`Palette: ${sprite.palette.length} colors`);
+    console.log(`Palette: ${sprite.palette.length - 1} colors`);
     console.log(`Packed size: ${sprite.packedLength} characters`);
     console.log(`Raw size: ${sprite.rawSize} pixels`);
     console.log(`Compression ratio: ${sprite.compressionRatio}x`);
@@ -637,7 +690,7 @@ function generateHTMLReport(data) {
                 <div class="metric-label">Compression</div>
             </div>
             <div class="metric">
-                <div class="metric-value">${sprite.palette.length}</div>
+                <div class="metric-value">${sprite.palette.length - 1}</div>
                 <div class="metric-label">Colors</div>
             </div>
         </div>
@@ -647,13 +700,13 @@ function generateHTMLReport(data) {
             <div class="info-item">
                 <div class="info-label">Packed String</div>
                 <div class="info-value" style="font-family: monospace; word-break: break-all; background: #0a0f1b; padding: 10px; border-radius: 6px; margin-top: 8px;">
-                    ${TARGET_SPRITE}
+                    ${JSON.stringify(TARGET_SPRITE)}
                 </div>
             </div>
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">Format</div>
-                    <div class="info-value">[w36]x[h36]|[pal]|[data]</div>
+                    <div class="info-value">{dims}|{cnt}{hex...}{order?}![data64]</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Dimensions (base36)</div>
@@ -661,11 +714,11 @@ function generateHTMLReport(data) {
                 </div>
                 <div class="info-item">
                     <div class="info-label">Palette Tokens</div>
-                    <div class="info-value">${sprite.palette.map(c => c.slice(1)).join(', ')}</div>
+                    <div class="info-value">${sprite.palette.slice(1).map(c => ((c[0]>>4).toString(16)+(c[1]>>4).toString(16)+(c[2]>>4).toString(16))).join(', ')}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Data Encoding</div>
-                    <div class="info-value">Base36 RLE + Literal</div>
+                    <div class="info-value">Base64 of 4bpp indices with XOR diff + RLE0</div>
                 </div>
             </div>
         </div>
@@ -727,7 +780,7 @@ function generateMarkdownReport(data) {
 
 ## 📊 Target Sprite Analysis
 
-**Packed String:** \`${TARGET_SPRITE}\`
+**Packed String:** \`${JSON.stringify(TARGET_SPRITE)}\`
 
 | Property | Value |
 |----------|-------|
@@ -739,7 +792,7 @@ function generateMarkdownReport(data) {
 
 ### Palette
 - **T (Transparent):** Checkerboard pattern
-${sprite.palette.map((color, i) => `- **${String.fromCharCode(65 + i)}:** ${color}`).join('\n')}
+${sprite.palette.slice(1).map((color, i) => `- **${String.fromCharCode(65 + i)}:** ${((color[0]>>4).toString(16)+(color[1]>>4).toString(16)+(color[2]>>4).toString(16))}`).join('\n')}
 
 ## 📁 Benchmark Files Comparison (Ranked by Size)
 
@@ -771,16 +824,17 @@ ${sprite.packedLength < allFiles[0].size ?
 ## 📋 Packed Format Details
 
 ### Format Structure
-\`[w36]x[h36]|[pal]|[data]\`
+\`{dims}|{cnt}{hex...}{order?}![data64]\`
 
 - **Dimensions (base36):** ${sprite.width}×${sprite.height} → \`${sprite.width.toString(36)}×${sprite.height.toString(36)}\`
-- **Palette Tokens:** ${sprite.palette.map(c => c.slice(1)).join(', ')}
-- **Data Encoding:** Base36 RLE + Literal
+- **Palette Tokens:** ${sprite.palette.slice(1).map(c => ((c[0]>>4).toString(16)+(c[1]>>4).toString(16)+(c[2]>>4).toString(16))).join(', ')}
+- **Data Encoding:** Base64 of 4bpp indices with XOR diff + RLE0
 
 ### Data Breakdown
-The packed data uses a combination of:
-- **RLE (Run-Length Encoding):** Number + Color (e.g., \`5T\` = 5 transparent pixels)
-- **Literal Colors:** Direct color references (e.g., \`A\` = color A, \`T\` = transparent)
+  The packed data uses a combination of:
+  - **4bpp packing:** Two pixel indices per byte
+  - **XOR differential:** XOR each byte with previous to improve RLE
+  - **Zero RLE:** Runs of zero bytes are compressed as \`0 + count\`
 
 ### Compression Analysis
 - **Raw pixel data:** ${sprite.rawSize} pixels
@@ -790,8 +844,8 @@ The packed data uses a combination of:
 
 ## 🔍 Technical Notes
 
-- **Base36 encoding** provides compact representation for numbers
-- **RLE compression** is effective for sprites with repeated colors
+- **Base64 encoding** avoids control characters for safe JSON and clipboard use
+- **XOR + RLE** make sequential pixel data highly compressible
 - **Palette optimization** reduces color data overhead
 - **Format efficiency** varies based on sprite complexity and color distribution
 
