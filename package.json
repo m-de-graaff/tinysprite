@@ -6,7 +6,11 @@
   "scripts": {
     "build": "node build.js",
     "build-demo": "node build-demo.js",
-    "benchmark": "node benchmarks/benchmark-analyzer.js"
+    "benchmark": "node benchmarks/benchmark-analyzer.js",
+    "dev": "python -m http.server 8000",
+    "dev:win": "python -m http.server 8000",
+    "dev:py3": "python3 -m http.server 8000",
+    "dev:alt": "npx serve . -p 8000"
   },
   "dependencies": {
     "sharp": "^0.34.3"

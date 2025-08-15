@@ -78,20 +78,7 @@ const palette = TinySprites.makePalette(["#ff0000", "#00ff00", "#0000ff"]);
 // Index 0 is always transparent
 ```
 
-### Encoding & Decoding
-
-#### `TinySprites.encodePacked(sprite, paletteHex, rawMode)`
-
-Encodes a sprite into a compact packed string format.
-
-```javascript
-const sprite = TinySprites.create(8, 8, 1, ["#ff0000", "#00ff00"]);
-const packed = TinySprites.encodePacked(sprite, ["ff0000", "00ff00"]);
-console.log(packed); // "8x8|ff0000.00ff00|8A8B..."
-
-// Use raw mode for literal encoding (no RLE compression)
-const rawPacked = TinySprites.encodePacked(sprite, ["ff0000", "00ff00"], true);
-```
+### Decoding
 
 #### `TinySprites.decodePacked(packedString)`
 
@@ -142,83 +129,24 @@ const imageData = TinySprites.toImageData(sprite);
 ctx.putImageData(imageData, 0, 0);
 ```
 
-### Transformations
-
-#### `TinySprites.flipH(sprite)`
-
-Flips sprite horizontally.
-
-```javascript
-const flippedSprite = TinySprites.flipH(sprite);
-```
-
-#### `TinySprites.flipV(sprite)`
-
-Flips sprite vertically.
-
-```javascript
-const flippedSprite = TinySprites.flipV(sprite);
-```
-
-#### `TinySprites.rot90(sprite)`, `TinySprites.rot180(sprite)`, `TinySprites.rot270(sprite)`
-
-Rotates sprite by specified degrees.
-
-```javascript
-const rotatedSprite = TinySprites.rot90(sprite); // 90° clockwise
-const rotatedSprite = TinySprites.rot180(sprite); // 180°
-const rotatedSprite = TinySprites.rot270(sprite); // 270° clockwise
-```
-
-### Export Functions
-
-#### `TinySprites.toImage(sprite, scale)`
-
-Creates an HTML Image element.
-
-```javascript
-const img = TinySprites.toImage(sprite, 4);
-img.onload = () => document.body.appendChild(img);
-```
-
-#### `TinySprites.toBitmap(sprite, scale)`
-
-Creates an ImageBitmap (if supported).
-
-```javascript
-TinySprites.toBitmap(sprite, 4).then((bitmap) => {
-  ctx.drawImage(bitmap, 0, 0);
-});
-```
 
 ## 🎨 Packed Format
 
-TinySprites uses a compact packed format for sharing sprites:
+TinySprites uses a compact packed format:
 
-```
-{width}x{height}|{palette}|{rle_data}
-```
+`{dims}|{cnt}{hex...}{order?}{data128}`
 
-### Format Breakdown
-
-- **Width/Height**: Base36 encoded dimensions (e.g., `8x8`, `gx10`)
-- **Palette**: Dot or comma separated hex colors without `#` (e.g., `ff0000.00ff00`)
-- **RLE Data**: Run-length encoded pixel indices using base36 + symbols
-
-### Symbol Mapping
-
-- `T` = Transparent (index 0)
-- `A` = Color index 1
-- `B` = Color index 2
-- `Z` = Color index 26
+- **dims**: omit to use defaults; if w==h use a single number, otherwise `{w?}x{h?}` with sides blank for defaults
+- **cnt**: base36 count of palette colors (excluding transparent)
+- **hex...**: 3-digit RGB tokens for each color
+- **order?**: optional scan-order char like `Z`
+- **data128**: base128-encoded 4bpp indices (two pixels per byte) using XOR diff and zero RLE
 
 ### Example Packed String
 
-```
-8x8|ff0000.00ff00.0000ff|8A8B8C8D8E8F8G8H
-```
+`1|1f0011`
 
-This represents an 8x8 sprite with red, green, and blue colors, with RLE-compressed pixel data.
+This represents a 1×1 sprite using palette index 1.
 
 ## 🖥️ Web Editor
 
@@ -243,6 +171,7 @@ TinySprites includes a powerful web-based sprite editor:
 5. Export as packed code or PNG
 
 Or can be found [here](https://m-de-graaff.github.io/tinysprite/)!
+
 
 ## 📱 Demo Page
 

@@ -1,147 +1,331 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TinySprites Demo</title>
-  <style>
-    *{box-sizing:border-box} body{margin:0;background:#f5f7fb;font-family:system-ui,Segoe UI,Inter,Roboto,sans-serif;color:#1f2540}
-    .container{max-width:1000px;margin:0 auto;padding:20px}
-    .card{background:#fff;border:1px solid #e3e7ef;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.04);padding:20px;margin-bottom:16px}
-    .header{background:#667eea;color:#fff;border-radius:12px;padding:26px;margin-bottom:16px}
-    .header h1{margin:0 0 6px} .nav a{display:inline-block;margin-right:12px;color:#667eea;text-decoration:none;font-weight:600}
-    .btn{background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 16px;cursor:pointer}
-    .btn.secondary{background:#e9ecf7;color:#354167}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .sprite-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
-    canvas{border:2px solid #e3e7ef;border-radius:10px;background:#f3f5fb;max-width:100%}
-    .status{padding:10px;border-radius:6px;margin-top:10px;font-weight:600}
-    .status.success{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-    .status.error{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
-    code{word-break:break-all;background:#f1f3f7;padding:2px 6px;border-radius:6px}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🎨 TinySprites Demo</h1>
-      <div class="nav"><a href="index.html">Editor</a> <a href="demo.html" style="color:#e2e6ff">Demo</a></div>
-      <p>Decode packed codes and browse a tiny community library.</p>
-    </div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TinySprites Demo</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: #f5f7fb;
+                font-family: system-ui, Segoe UI, Inter, Roboto, sans-serif;
+                color: #1f2540;
+            }
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .card {
+                background: #fff;
+                border: 1px solid #e3e7ef;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                padding: 20px;
+                margin-bottom: 16px;
+            }
+            .header {
+                background: #667eea;
+                color: #fff;
+                border-radius: 12px;
+                padding: 26px;
+                margin-bottom: 16px;
+            }
+            .header h1 {
+                margin: 0 0 6px;
+            }
+            .nav a {
+                display: inline-block;
+                margin-right: 12px;
+                color: #667eea;
+                text-decoration: none;
+                font-weight: 600;
+            }
+            .btn {
+                background: #667eea;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 16px;
+                cursor: pointer;
+            }
+            .btn.secondary {
+                background: #e9ecf7;
+                color: #354167;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+            .sprite-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 14px;
+            }
+            canvas {
+                border: 2px solid #e3e7ef;
+                border-radius: 10px;
+                background: #f3f5fb;
+                max-width: 100%;
+            }
+            .status {
+                padding: 10px;
+                border-radius: 6px;
+                margin-top: 10px;
+                font-weight: 600;
+            }
+            .status.success {
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+            .status.error {
+                background: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+            }
+            code {
+                word-break: break-all;
+                background: #f1f3f7;
+                padding: 2px 6px;
+                border-radius: 6px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🎨 TinySprites Demo</h1>
+                <div class="nav"><a href="index.html">Editor</a> <a href="demo.html" style="color: #e2e6ff;">Demo</a></div>
+                <p>Decode packed codes and browse a tiny community library.</p>
+            </div>
 
-    <div class="card">
-      <h2>📦 Decode a Packed Code</h2>
-      <div class="grid">
-        <div>
-          <label for="packedInput"><strong>Packed Code</strong></label>
-          <input id="packedInput" style="width:100%;margin:6px 0 10px;padding:10px;border:2px solid #e3e7ef;border-radius:8px;font-family:ui-monospace,Menlo,Consolas,monospace" placeholder="e.g. dx9|000.444.fd0.fff|..." />
-          <div>
-            <button class="btn" onclick="decodeAndDisplay()">🚀 Decode & Display</button>
-            <button class="btn secondary" onclick="clearCanvas()">🗑️ Clear</button>
-          </div>
-          <div id="status" class="status" style="display:none"></div>
-          <div style="margin-top:12px"><small>Format: <code>[w36]x[h36]|[pal]|[order?][data]</code> — pal tokens have no <code>#</code>; data is base36 RLE or literal, with optional scan order char (e.g., Z).</small></div>
+            <div class="card">
+                <h2>📦 Decode a Packed Code</h2>
+                <div class="grid">
+                    <div>
+                        <label for="packedInput"><strong>Packed Code</strong></label>
+                        <input id="packedInput" style="width: 100%; margin: 6px 0 10px; padding: 10px; border: 2px solid #e3e7ef; border-radius: 8px; font-family: ui-monospace, Menlo, Consolas, monospace;" placeholder="e.g. 1|11f0011" />
+                        <div>
+                            <button class="btn" onclick="decodeAndDisplay()">🚀 Decode & Display</button>
+                            <button class="btn secondary" onclick="clearCanvas()">🗑️ Clear</button>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <label>Default W <input id="defW" type="number" value="16" style="width: 60px;" /></label>
+                            <label>Default H <input id="defH" type="number" value="16" style="width: 60px;" /></label>
+                        </div>
+                        <div style="margin-top: 6px;"><input type="file" id="runtimeUpload" accept=".js" /></div>
+                        <div id="status" class="status" style="display: none;"></div>
+                        <div style="margin-top: 12px;">
+                            <small>Format: <code>[dims?]|[cnt][hex...][order?][data128]</code> — palette count followed by RGB triples; data is base128-encoded 4bpp indices with optional <code>Z</code> scan order.</small>
+                        </div>
+                    </div>
+                    <div class="card" style="margin: 0;">
+                        <canvas id="mainCanvas" width="400" height="300"></canvas>
+                        <div id="spriteInfo" style="display: none; margin-top: 10px; font: 12px ui-monospace, Menlo, Consolas, monospace;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📚 Community Sprite Library</h2>
+                <div id="spriteLibrary">Loading…</div>
+            </div>
         </div>
-        <div class="card" style="margin:0">
-          <canvas id="mainCanvas" width="400" height="300"></canvas>
-          <div id="spriteInfo" style="display:none;margin-top:10px;font:12px ui-monospace,Menlo,Consolas,monospace"></div>
-        </div>
-      </div>
-    </div>
 
-    <div class="card">
-      <h2>📚 Community Sprite Library</h2>
-      <div id="spriteLibrary">Loading…</div>
-    </div>
-  </div>
+        <script src="tinysprites.min.js"></script>
+        <script>
+            let currentSprite = null,
+                spriteLibrary = [];
+            document.addEventListener("DOMContentLoaded", () => {
+                loadSpriteLibrary();
+                const inp = document.getElementById("packedInput");
+                inp.addEventListener("keypress", (e) => {
+                    if (e.key === "Enter") decodeAndDisplay();
+                });
+                document.getElementById("defW").value = TinySprites.defaultW;
+                document.getElementById("defH").value = TinySprites.defaultH;
+                document.getElementById("defW").addEventListener("change", (e) => {
+                    TinySprites.defaultW = +e.target.value || TinySprites.defaultW;
+                });
+                document.getElementById("defH").addEventListener("change", (e) => {
+                    TinySprites.defaultH = +e.target.value || TinySprites.defaultH;
+                });
+                document.getElementById("runtimeUpload").addEventListener("change", async (e) => {
+                    const f = e.target.files[0];
+                    if (!f) return;
+                    const txt = await f.text();
+                    const s = document.createElement("script");
+                    s.textContent = txt;
+                    document.body.appendChild(s);
+                    document.getElementById("defW").value = TinySprites.defaultW;
+                    document.getElementById("defH").value = TinySprites.defaultH;
+                });
+                const code = new URLSearchParams(location.search).get("code");
+                if (code) {
+                    inp.value = code;
+                    decodeAndDisplay();
+                }
+            });
 
-  <script src="tinysprites.min.js"></script>
-  <script>
-    let currentSprite=null, spriteLibrary=[];
-    document.addEventListener('DOMContentLoaded',()=>{
-      loadSpriteLibrary();
-      document.getElementById('packedInput').addEventListener('keypress',e=>{ if(e.key==='Enter') decodeAndDisplay();});
-      const code=new URLSearchParams(location.search).get('code'); if(code){ document.getElementById('packedInput').value=code; decodeAndDisplay(); }
-    });
+            function decodeAndDisplay() {
+                const code = document.getElementById("packedInput").value.trim();
+                if (!code) return showStatus("Please enter a packed code", "error");
+                try {
+                    console.log("Decoding packed code:", code);
+                    console.log("Default dimensions:", TinySprites.defaultW, "x", TinySprites.defaultH);
 
-    function decodeAndDisplay(){
-      const code=document.getElementById('packedInput').value.trim();
-      if(!code) return showStatus('Please enter a packed code','error');
-      try{ currentSprite=TinySprites.decodePacked(code); displaySprite(currentSprite); showSpriteInfo(currentSprite); showStatus('Sprite decoded successfully!','success'); }
-      catch(err){ console.error(err); showStatus('Error decoding sprite: '+err.message,'error'); }
-    }
+                    currentSprite = TinySprites.decodePacked(code);
 
-    function displaySprite(sprite, scale=4){
-      const c=document.getElementById('mainCanvas'), ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
-      const x=(c.width-sprite.w*scale)/2, y=(c.height-sprite.h*scale)/2; TinySprites.draw(ctx, sprite, x, y, { scale });
-    }
+                    console.log("Decoded sprite:", currentSprite);
+                    console.log("Sprite dimensions:", currentSprite.w, "x", currentSprite.h);
+                    console.log("Sprite data length:", currentSprite.data.length);
+                    console.log("Sprite palette length:", currentSprite.palette.length);
 
-    function showSpriteInfo(sprite){ const el=document.getElementById('spriteInfo'); el.style.display='block'; el.innerHTML = `
+                    // Validate sprite before displaying
+                    if (!currentSprite.w || !currentSprite.h || currentSprite.w <= 0 || currentSprite.h <= 0) {
+                        throw new Error(`Invalid sprite dimensions: ${currentSprite.w} x ${currentSprite.h}`);
+                    }
+
+                    if (!currentSprite.data || currentSprite.data.length !== currentSprite.w * currentSprite.h) {
+                        throw new Error(`Data length mismatch: expected ${currentSprite.w * currentSprite.h}, got ${currentSprite.data?.length || 0}`);
+                    }
+
+                    displaySprite(currentSprite);
+                    showSpriteInfo(currentSprite);
+                    showStatus("Sprite decoded successfully!", "success");
+                } catch (err) {
+                    console.error(err);
+                    showStatus("Error decoding sprite: " + err.message, "error");
+                }
+            }
+
+            function displaySprite(sprite, scale = 4) {
+                console.log("Displaying sprite:", sprite);
+                console.log("Scale:", scale);
+
+                const c = document.getElementById("mainCanvas");
+                const ctx = c.getContext("2d");
+
+                console.log("Canvas dimensions:", c.width, "x", c.height);
+                console.log("Sprite dimensions:", sprite.w, "x", sprite.h);
+
+                ctx.clearRect(0, 0, c.width, c.height);
+
+                const x = (c.width - sprite.w * scale) / 2;
+                const y = (c.height - sprite.h * scale) / 2;
+
+                console.log("Drawing at position:", x, y);
+
+                try {
+                    TinySprites.draw(ctx, sprite, x, y, { scale });
+                    console.log("Sprite drawn successfully");
+                } catch (err) {
+                    console.error("Error drawing sprite:", err);
+                    throw err;
+                }
+            }
+
+            function showSpriteInfo(sprite) {
+                const el = document.getElementById("spriteInfo");
+                el.style.display = "block";
+                el.innerHTML = `
       <strong>Sprite:</strong> ${sprite.w}×${sprite.h}<br>
-      <strong>Palette entries:</strong> ${sprite.palette.length-1}<br>
-      <strong>Pixels:</strong> ${sprite.data.length}`; }
+      <strong>Palette entries:</strong> ${sprite.palette.length - 1}<br>
+      <strong>Pixels:</strong> ${sprite.data.length}`;
+            }
 
-    function showStatus(msg,type){ const el=document.getElementById('status'); el.style.display='block'; el.className='status '+type; el.textContent=msg; setTimeout(()=>{ el.style.display='none'; }, 3000); }
-    function clearCanvas(){ const c=document.getElementById('mainCanvas'), ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); document.getElementById('spriteInfo').style.display='none'; document.getElementById('status').style.display='none'; currentSprite=null; }
+            function showStatus(msg, type) {
+                const el = document.getElementById("status");
+                el.style.display = "block";
+                el.className = "status " + type;
+                el.textContent = msg;
+                setTimeout(() => {
+                    el.style.display = "none";
+                }, 3000);
+            }
+            function clearCanvas() {
+                const c = document.getElementById("mainCanvas"),
+                    ctx = c.getContext("2d");
+                ctx.clearRect(0, 0, c.width, c.height);
+                document.getElementById("spriteInfo").style.display = "none";
+                document.getElementById("status").style.display = "none";
+                currentSprite = null;
+            }
 
-    async function loadSpriteLibrary(){
-      const container=document.getElementById('spriteLibrary');
-      try{
-        if(location.protocol!=='file:'){
-          const res=await fetch('library.json',{cache:'no-store'}); if(!res.ok) throw new Error('HTTP '+res.status);
-          const data=await res.json(); spriteLibrary=data.sprites||[]; return renderLibrary();
-        }
-        throw new Error('file:// fallback');
-      }catch(e){
-        try{ const tag=document.getElementById('ts-library'); if(!tag) throw new Error('No inline JSON'); const data=JSON.parse(tag.textContent); spriteLibrary=data.sprites||[]; return renderLibrary(); }
-        catch(err){ container.innerHTML=`<div class="status error">Error loading library: ${e.message}. Serve over HTTP or keep inline JSON fallback.</div>`; }
-      }
-    }
+            async function loadSpriteLibrary() {
+                const container = document.getElementById("spriteLibrary");
+                try {
+                    if (location.protocol !== "file:") {
+                        const res = await fetch("library.json", { cache: "no-store" });
+                        if (!res.ok) throw new Error("HTTP " + res.status);
+                        const data = await res.json();
+                        spriteLibrary = data.sprites || [];
+                        return renderLibrary();
+                    }
+                    throw new Error("file:// fallback");
+                } catch (e) {
+                    try {
+                        const tag = document.getElementById("ts-library");
+                        if (!tag) throw new Error("No inline JSON");
+                        const data = JSON.parse(tag.textContent);
+                        spriteLibrary = data.sprites || [];
+                        return renderLibrary();
+                    } catch (err) {
+                        container.innerHTML = `<div class="status error">Error loading library: ${e.message}. Serve over HTTP or keep inline JSON fallback.</div>`;
+                    }
+                }
+            }
 
-    function renderLibrary(){
-      const container=document.getElementById('spriteLibrary');
-      if(!spriteLibrary.length){ container.textContent='No sprites found.'; return; }
-      const grid=document.createElement('div'); grid.className='sprite-grid';
-      for(const s of spriteLibrary){
-        const item=document.createElement('div'); item.className='card'; item.style.margin=0; item.style.cursor='pointer'; item.onclick=()=>{ document.getElementById('packedInput').value=s.packedCode; decodeAndDisplay(); };
-        item.innerHTML=`<div style="font-weight:700;margin-bottom:6px">${s.name}</div>
+            function renderLibrary() {
+                const container = document.getElementById("spriteLibrary");
+                if (!spriteLibrary.length) {
+                    container.textContent = "No sprites found.";
+                    return;
+                }
+                const grid = document.createElement("div");
+                grid.className = "sprite-grid";
+                for (const s of spriteLibrary) {
+                    const item = document.createElement("div");
+                    item.className = "card";
+                    item.style.margin = 0;
+                    item.style.cursor = "pointer";
+                    item.onclick = () => {
+                        document.getElementById("packedInput").value = s.packedCode;
+                        decodeAndDisplay();
+                    };
+                    item.innerHTML = `<div style="font-weight:700;margin-bottom:6px">${s.name}</div>
                         <div style="color:#53607c;font-size:12px;margin-bottom:6px">${s.description}</div>
                         <div style="color:#667eea;font-weight:600;font-size:12px;margin-bottom:6px">by ${s.author}</div>
                         <code>${s.packedCode}</code>`;
-        grid.appendChild(item);
-      }
-      container.innerHTML=''; container.appendChild(grid);
-    }
-  </script>
+                    grid.appendChild(item);
+                }
+                container.innerHTML = "";
+                container.appendChild(grid);
+            }
+        </script>
 
-  <!-- Auto-injected library.json content -->
-  <script id="ts-library" type="application/json">
-    {
-  "version": "1.0.0",
-  "description": "Community sprite library for TinySprites",
-  "sprites": [
-    {
-      "id": "cat-9x13",
-      "name": "Cat",
-      "description": "A cute 9x13 cat sprite",
-      "category": "animals",
-      "author": "m-de-graaff",
-      "packedCode": "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T"
-    },
-    {
-        "id": "diamond-13x12",
-        "name": "Diamond",
-        "description": "A diamond sprite",
-        "category": "shapes",
-        "author": "m-de-graaff",
-        "packedCode": "cxd|033.fff.088.0df|TTTTAAAATTTTTTTABBBBATTTTTABDDDBDATTTABDDDBDDATTTABDBBBBDDATABDBDDDDCDATABDBDDDDCDDAABBCDDDDCCCAABDDCCCCDDDATADCDDDDCDATTADCDDDDCDATTTACDDDDCATTTTTAAAAAATTT"
-    }
-  ],
-  "categories": [
-    "animals"
-  ]
-}
-
-  </script>
-</body>
+        <!-- Auto-injected library.json content -->
+        <script id="ts-library" type="application/json">
+            {
+                "version": "1.0.0",
+                "description": "Community sprite library for TinySprites",
+                "sprites": [
+                    {
+                        "id": "cat-9x13",
+                        "name": "Cat",
+                        "description": "A cute 9x13 cat sprite",
+                        "category": "animals",
+                        "author": "m-de-graaff",
+                        "packedCode": "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T"
+                    }
+                ],
+                "categories": ["animals"]
+            }
+        </script>
+    </body>
 </html>

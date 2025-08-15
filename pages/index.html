@@ -1,426 +1,1202 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>TinySprites — Rebuilt Editor</title>
-  <style>
-    :root{
-      --bg:#0d0f13;--panel:#141824;--muted:#9aa3b2;--ink:#e8eaf3;--acc:#78dcfa;--line:#22283a;--chip:#0b0e17;
-      --danger:#ff5b6b;--ok:#2dd4bf
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Inter,Roboto,sans-serif}
-    .app{display:grid;grid-template-columns:400px 1fr 320px;gap:12px;padding:12px;height:100%}
-    @media(max-width:1200px){.app{grid-template-columns:1fr}}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:0;display:flex;flex-direction:column}
-    h2{font-size:15px;margin:0 0 8px}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .btn{background:#0e1220;border:1px solid #202641;color:var(--ink);padding:6px 10px;border-radius:10px;cursor:pointer}
-    .btn:hover{border-color:#2b3458}
-    .btn.acc{background:var(--acc);color:#00131c;border-color:#54bfe2}
-    .btn.warn{background:#201017;border-color:#5e2332}
-    .btn.ghost{background:transparent;border-color:#2a3248}
-    label{color:var(--muted)}
-    input[type="number"],input[type="text"],select{background:#0b0f1a;color:var(--ink);border:1px solid #202641;border-radius:8px;padding:6px 8px}
-    input.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-    textarea{background:#0a0f1b;color:var(--ink);border:1px solid #202641;border-radius:10px;padding:8px;width:100%;height:100px}
-    .tools{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-    .tools .btn{padding:6px 0;text-align:center}
-    #stage{width:100%;aspect-ratio:1/1;background:#0f1422;border:1px solid var(--line);border-radius:12px;image-rendering:pixelated}
-    #preview{image-rendering:pixelated;border:1px solid var(--line);border-radius:12px;background:
-      conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/20px 20px}
-    .pill{background:#0b0f19;border:1px solid #1e2436;border-radius:999px;padding:3px 8px;font-size:12px;color:#cbd3e1}
-    .status{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-    .pal{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:6px;max-height:350px;overflow:auto;padding-right:12px}
-    .pal{background:rgba(0,0,0,0.1);border-radius:16px;padding:16px;margin:8px 0}
-    .pal .chip{transition:all 0.2s ease}
-    .chip{display:flex;flex-direction:column;gap:6px;align-items:center;border:1px solid #1f2538;border-radius:10px;padding:8px;background:var(--chip);min-width:48px}
-    .sw{width:36px;height:36px;border:2px solid #1e2436;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1);cursor:pointer;transition:all 0.2s ease}
-    .sw:hover{border-color:#2b3458;transform:scale(1.05)}
-    .sw.selected{border-color:var(--acc);box-shadow:0 0 0 2px rgba(120,220,250,0.3), 0 0 8px rgba(120,220,250,0.2)}
-    .sw:active{transform:scale(0.95)}
-    .pal .chip:hover{background:rgba(255,255,255,0.05);border-color:#2b3458}
-    .pal .chip .btn:hover{transform:scale(1.05)}
-    .pal .chip input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(120,220,250,0.3)}
-    .pal .chip{transition:all 0.2s ease}
-    #colorPreview:hover{border-color:#2b3458;transform:scale(1.05);transition:all 0.2s ease}
-    #colorPreview{transition:all 0.2s ease}
-    .pal{background:rgba(0,0,0,0.1);border-radius:16px;padding:20px;margin:8px 0}
-    .pal::-webkit-scrollbar{width:12px}
-    .pal::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);border-radius:6px}
-    .pal::-webkit-scrollbar-thumb{background:rgba(120,220,250,0.3);border-radius:6px}
-    .pal::-webkit-scrollbar-thumb:hover{background:rgba(120,220,250,0.5)}
-    .enc{display:flex;gap:8px;align-items:center}
-    .stat{font:12px ui-monospace,Menlo,Consolas,monospace;color:#c9d1e6;white-space:pre-wrap}
-    .kbd{padding:1px 6px;border:1px solid #202641;border-radius:6px;background:#0a0e18;color:#cfe3ff}
-  </style>
-</head>
-<body>
-  <div class="app">
-    <!-- Left: Controls -->
-    <section class="card">
-      <h2>Sprite</h2>
-      <div class="row">
-        <label>W <input id="w" type="number" min="1" max="64" value="16" style="width:80px"></label>
-        <label>H <input id="h" type="number" min="1" max="64" value="16" style="width:80px"></label>
-        <button class="btn" id="applySize">Apply</button>
-        <label class="row" style="margin-left:auto"><input id="gridToggle" type="checkbox" checked> Grid</label>
-      </div>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>TinySprites — Rebuilt Editor</title>
+        <style>
+            :root {
+                --bg: #0d0f13;
+                --panel: #141824;
+                --muted: #9aa3b2;
+                --ink: #e8eaf3;
+                --acc: #78dcfa;
+                --line: #22283a;
+                --chip: #0b0e17;
+                --danger: #ff5b6b;
+                --ok: #2dd4bf;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                background: var(--bg);
+                color: var(--ink);
+                font: 14px/1.45 system-ui, Segoe UI, Inter, Roboto, sans-serif;
+            }
+            .app {
+                display: grid;
+                grid-template-columns: 400px 1fr 320px;
+                gap: 12px;
+                padding: 12px;
+                height: 100%;
+            }
+            @media (max-width: 1200px) {
+                .app {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .card {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                padding: 12px;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            h2 {
+                font-size: 15px;
+                margin: 0 0 8px;
+            }
+            .row {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            .btn {
+                background: #0e1220;
+                border: 1px solid #202641;
+                color: var(--ink);
+                padding: 6px 10px;
+                border-radius: 10px;
+                cursor: pointer;
+            }
+            .btn:hover {
+                border-color: #2b3458;
+            }
+            .btn.acc {
+                background: var(--acc);
+                color: #00131c;
+                border-color: #54bfe2;
+            }
+            .btn.warn {
+                background: #201017;
+                border-color: #5e2332;
+            }
+            .btn.ghost {
+                background: transparent;
+                border-color: #2a3248;
+            }
+            label {
+                color: var(--muted);
+            }
+            input[type="number"],
+            input[type="text"],
+            select {
+                background: #0b0f1a;
+                color: var(--ink);
+                border: 1px solid #202641;
+                border-radius: 8px;
+                padding: 6px 8px;
+            }
+            input.mono {
+                font-family: ui-monospace, Menlo, Consolas, monospace;
+            }
+            textarea {
+                background: #0a0f1b;
+                color: var(--ink);
+                border: 1px solid #202641;
+                border-radius: 10px;
+                padding: 8px;
+                width: 100%;
+                height: 100px;
+            }
+            .tools {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 6px;
+            }
+            .tools .btn {
+                padding: 6px 0;
+                text-align: center;
+            }
+            #stage {
+                width: 100%;
+                aspect-ratio: 1/1;
+                background: #0f1422;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                image-rendering: pixelated;
+            }
+            #preview {
+                image-rendering: pixelated;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                background: conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/20px 20px;
+            }
+            .pill {
+                background: #0b0f19;
+                border: 1px solid #1e2436;
+                border-radius: 999px;
+                padding: 3px 8px;
+                font-size: 12px;
+                color: #cbd3e1;
+            }
+            .status {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-top: 8px;
+            }
+            .pal {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+                gap: 6px;
+                max-height: 350px;
+                overflow: auto;
+                padding-right: 12px;
+            }
+            .pal {
+                background: rgba(0, 0, 0, 0.1);
+                border-radius: 16px;
+                padding: 16px;
+                margin: 8px 0;
+            }
+            .pal .chip {
+                transition: all 0.2s ease;
+            }
+            .chip {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                align-items: center;
+                border: 1px solid #1f2538;
+                border-radius: 10px;
+                padding: 8px;
+                background: var(--chip);
+                min-width: 48px;
+            }
+            .sw {
+                width: 36px;
+                height: 36px;
+                border: 2px solid #1e2436;
+                border-radius: 6px;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            .sw:hover {
+                border-color: #2b3458;
+                transform: scale(1.05);
+            }
+            .sw.selected {
+                border-color: var(--acc);
+                box-shadow: 0 0 0 2px rgba(120, 220, 250, 0.3), 0 0 8px rgba(120, 220, 250, 0.2);
+            }
+            .sw:active {
+                transform: scale(0.95);
+            }
+            .pal .chip:hover {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: #2b3458;
+            }
+            .pal .chip .btn:hover {
+                transform: scale(1.05);
+            }
+            .pal .chip input:focus {
+                outline: none;
+                border-color: var(--acc);
+                box-shadow: 0 0 0 3px rgba(120, 220, 250, 0.3);
+            }
+            .pal .chip {
+                transition: all 0.2s ease;
+            }
+            #colorPreview:hover {
+                border-color: #2b3458;
+                transform: scale(1.05);
+                transition: all 0.2s ease;
+            }
+            #colorPreview {
+                transition: all 0.2s ease;
+            }
+            .pal {
+                background: rgba(0, 0, 0, 0.1);
+                border-radius: 16px;
+                padding: 20px;
+                margin: 8px 0;
+            }
+            .pal::-webkit-scrollbar {
+                width: 12px;
+            }
+            .pal::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 6px;
+            }
+            .pal::-webkit-scrollbar-thumb {
+                background: rgba(120, 220, 250, 0.3);
+                border-radius: 6px;
+            }
+            .pal::-webkit-scrollbar-thumb:hover {
+                background: rgba(120, 220, 250, 0.5);
+            }
+            .enc {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            .stat {
+                font: 12px ui-monospace, Menlo, Consolas, monospace;
+                color: #c9d1e6;
+                white-space: pre-wrap;
+            }
+            .kbd {
+                padding: 1px 6px;
+                border: 1px solid #202641;
+                border-radius: 6px;
+                background: #0a0e18;
+                color: #cfe3ff;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app">
+            <!-- Left: Controls -->
+            <section class="card">
+                <h2>Sprite</h2>
+                <div class="row">
+                    <label>W <input id="w" type="number" min="1" max="64" value="16" style="width: 80px;" /></label>
+                    <label>H <input id="h" type="number" min="1" max="64" value="16" style="width: 80px;" /></label>
+                    <button class="btn" id="applySize">Apply</button>
+                    <label class="row" style="margin-left: auto;"><input id="gridToggle" type="checkbox" checked /> Grid</label>
+                </div>
 
-      <div class="tools" style="margin:8px 0">
-        <button class="btn" data-tool="pencil" title="Pencil (P)">✏️</button>
-        <button class="btn" data-tool="eraser" title="Eraser (E)">🧽</button>
-        <button class="btn" data-tool="fill"   title="Fill (F)">🪣</button>
-        <button class="btn" data-tool="eyedrop" title="Eyedrop (I)">🎯</button>
-        <button class="btn" data-tool="line"   title="Line (L)">／</button>
-        <button class="btn" data-tool="rect"   title="Rect (R)">▭</button>
-        <button class="btn" data-tool="rectfill" title="Filled (G)">▮</button>
-      </div>
+                <div class="tools" style="margin: 8px 0;">
+                    <button class="btn" data-tool="pencil" title="Pencil (P)">✏️</button>
+                    <button class="btn" data-tool="eraser" title="Eraser (E)">🧽</button>
+                    <button class="btn" data-tool="fill" title="Fill (F)">🪣</button>
+                    <button class="btn" data-tool="eyedrop" title="Eyedrop (I)">🎯</button>
+                    <button class="btn" data-tool="line" title="Line (L)">／</button>
+                    <button class="btn" data-tool="rect" title="Rect (R)">▭</button>
+                    <button class="btn" data-tool="rectfill" title="Filled (G)">▮</button>
+                </div>
 
-      <div class="row">
-        <button class="btn" id="mirrorX" title="Mirror X (M)">↔️</button>
-        <button class="btn" id="mirrorY" title="Mirror Y (N)">↕️</button>
-        <button class="btn" id="rotL" title="Rotate CCW">⟲</button>
-        <button class="btn" id="rotR" title="Rotate CW">⟳</button>
-        <button class="btn" id="flipH" title="Flip H">⇋</button>
-        <button class="btn" id="flipV" title="Flip V">⇅</button>
-        <button class="btn warn" id="clear">Clear</button>
-      </div>
+                <div class="row">
+                    <button class="btn" id="mirrorX" title="Mirror X (M)">↔️</button>
+                    <button class="btn" id="mirrorY" title="Mirror Y (N)">↕️</button>
+                    <button class="btn" id="rotL" title="Rotate CCW">⟲</button>
+                    <button class="btn" id="rotR" title="Rotate CW">⟳</button>
+                    <button class="btn" id="flipH" title="Flip H">⇋</button>
+                    <button class="btn" id="flipV" title="Flip V">⇅</button>
+                    <button class="btn warn" id="clear">Clear</button>
+                </div>
 
-      <h2 style="margin-top:10px">Palette</h2>
-      <div id="palette" class="pal"></div>
-      <div class="row" style="margin-top:16px;gap:12px;align-items:center">
-        <div style="position:relative;display:flex;align-items:center;gap:12px">
-          <div id="colorPreview" style="width:48px;height:48px;border:3px solid #202641;border-radius:12px;background:#1a2032;cursor:pointer" title="Click to pick color"></div>
-          <input id="newColorHex" class="mono" type="text" placeholder="#RRGGBB" maxlength="7" style="width:160px;padding:10px 12px;font-size:16px;border-radius:10px;border:2px solid #202641;background:#0b0f1a;color:var(--ink)" title="Enter hex color (e.g., #FF0000 for red)">
+                <h2 style="margin-top: 10px;">Palette</h2>
+                <div id="palette" class="pal"></div>
+                <div class="row" style="margin-top: 16px; gap: 12px; align-items: center;">
+                    <div style="position: relative; display: flex; align-items: center; gap: 12px;">
+                        <div id="colorPreview" style="width: 48px; height: 48px; border: 3px solid #202641; border-radius: 12px; background: #1a2032; cursor: pointer;" title="Click to pick color"></div>
+                        <input
+                            id="newColorHex"
+                            class="mono"
+                            type="text"
+                            placeholder="#RRGGBB"
+                            maxlength="7"
+                            style="width: 160px; padding: 10px 12px; font-size: 16px; border-radius: 10px; border: 2px solid #202641; background: #0b0f1a; color: var(--ink);"
+                            title="Enter hex color (e.g., #FF0000 for red)"
+                        />
+                    </div>
+                    <button class="btn acc" id="addColor" style="padding: 10px 20px; font-size: 16px; border-radius: 10px;" title="Add this color to palette">Add Color</button>
+                    <button class="btn ghost" id="resetPalette" style="padding: 10px 16px; font-size: 16px; border-radius: 10px;" title="Clear all colors from palette">Reset</button>
+                </div>
+
+                <h2 style="margin-top: 10px;">History</h2>
+                <div class="row">
+                    <button class="btn" id="undoBtn" title="Ctrl/⌘+Z">↶ Undo</button>
+                    <button class="btn" id="redoBtn" title="Ctrl/⌘+Y">↷ Redo</button>
+                </div>
+
+                <h2 style="margin-top: 10px;">Export / Import</h2>
+                <div class="row enc">
+                    <label><input type="radio" name="enc" value="auto" checked /> Auto</label>
+                    <label><input type="radio" name="enc" value="rle" /> RLE</label>
+                    <label><input type="radio" name="enc" value="raw" /> RAW</label>
+                </div>
+                <div class="row" style="margin-top: 6px;">
+                    <label>Default W <input id="defW" type="number" min="1" max="64" value="16" style="width: 80px;" /></label>
+                    <label>Default H <input id="defH" type="number" min="1" max="64" value="16" style="width: 80px;" /></label>
+                </div>
+                <div class="row" style="margin-top: 6px;">
+                    <button class="btn acc" id="copyPacked">Copy Packed</button>
+                    <button class="btn" id="copyRLE">Copy RLE</button>
+                    <button class="btn" id="copyRAW">Copy RAW</button>
+                    <button class="btn" id="exportPng">Export PNG</button>
+                </div>
+                <textarea id="io" placeholder="Paste packed here, then Load"></textarea>
+                <div class="row">
+                    <button class="btn" id="loadPacked">Load Packed</button>
+                    <button class="btn ghost" id="downloadLib">Download Runtime</button>
+                </div>
+
+                <div class="status" style="margin-top: 10px;">
+                    <div class="pill" id="statusTool">Tool: Pencil</div>
+                    <div class="pill" id="statusColor">Color: A</div>
+                    <div class="pill" id="statusXY">X,Y: –</div>
+                    <div class="pill" id="statusGrid">Grid: On</div>
+                    <div class="pill" id="dimLabel">(16×16)</div>
+                </div>
+            </section>
+
+            <!-- Center: Canvas -->
+            <section class="card" style="min-height: 0;">
+                <h2>Editor</h2>
+                <canvas id="stage" width="512" height="512"></canvas>
+            </section>
+
+            <!-- Right: Preview & Stats -->
+            <section class="card">
+                <h2>Preview</h2>
+                <div class="row">
+                    <label>Scale <input id="scale" type="number" min="1" max="64" value="10" style="width: 80px;" /></label>
+                    <label>Fit WxH <input id="fitw" type="number" min="1" max="1024" value="160" style="width: 80px;" />×<input id="fith" type="number" min="1" max="1024" value="160" style="width: 80px;" /></label>
+                </div>
+                <canvas id="preview" width="160" height="160" style="margin-top: 8px;"></canvas>
+                <p style="color: var(--muted); font-size: 12px;">Nearest‑neighbor. Checkerboard = transparency.</p>
+
+                <h2 style="margin-top: 10px;">Data</h2>
+                <div id="stats" class="stat"></div>
+                <div style="margin-top: 8px; color: var(--muted); font-size: 12px;">
+                    Shortcuts: <span class="kbd">P</span>encil <span class="kbd">E</span>raser <span class="kbd">F</span>ill <span class="kbd">I</span>drop <span class="kbd">L</span>ine <span class="kbd">R</span>ect
+                    <span class="kbd">G</span> Filled <span class="kbd">M</span>/<span class="kbd">N</span> mirror
+                </div>
+            </section>
         </div>
-        <button class="btn acc" id="addColor" style="padding:10px 20px;font-size:16px;border-radius:10px" title="Add this color to palette">Add Color</button>
-        <button class="btn ghost" id="resetPalette" style="padding:10px 16px;font-size:16px;border-radius:10px" title="Clear all colors from palette">Reset</button>
-      </div>
 
-      <h2 style="margin-top:10px">History</h2>
-      <div class="row">
-        <button class="btn" id="undoBtn" title="Ctrl/⌘+Z">↶ Undo</button>
-        <button class="btn" id="redoBtn" title="Ctrl/⌘+Y">↷ Redo</button>
-      </div>
+        <script src="tinysprites.min.js"></script>
+        <script>
+            // ===== helpers =====
+            const $ = (s) => document.querySelector(s),
+                cap = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+            async function copyText(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                } catch {
+                    const ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.style.position = "fixed";
+                    ta.style.opacity = "0";
+                    ta.setAttribute("readonly", "");
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand("copy");
+                    } catch (_) {}
+                    document.body.removeChild(ta);
+                }
+            }
+            function hex6to3(hex) {
+                hex = hex.trim().toLowerCase().replace(/^#/, "");
+                if (!/^[0-9a-f]{6}$/.test(hex)) throw Error("need 6 hex");
+                const q = (n) => Math.max(0, Math.min(15, Math.round(n / 17))).toString(16);
+                return "#" + q(parseInt(hex.slice(0, 2), 16)) + q(parseInt(hex.slice(2, 4), 16)) + q(parseInt(hex.slice(4, 6), 16));
+            }
 
-      <h2 style="margin-top:10px">Export / Import</h2>
-      <div class="row enc">
-        <label><input type="radio" name="enc" value="auto" checked> Auto</label>
-        <label><input type="radio" name="enc" value="rle"> RLE</label>
-        <label><input type="radio" name="enc" value="raw"> RAW</label>
-      </div>
-      <div class="row" style="margin-top:6px">
-        <button class="btn acc" id="copyPacked">Copy Packed</button>
-        <button class="btn" id="copyRLE">Copy RLE</button>
-        <button class="btn" id="copyRAW">Copy RAW</button>
-        <button class="btn" id="exportPng">Export PNG</button>
-      </div>
-      <textarea id="io" placeholder="Paste packed here, then Load"></textarea>
-      <div class="row">
-        <button class="btn" id="loadPacked">Load Packed</button>
-        <button class="btn ghost" id="downloadLib">Download Runtime</button>
-      </div>
+            // ===== encoding helpers (moved from runtime) =====
+            const b36 = (n) => n.toString(36);
+            const toRGB3 = (h) => {
+                let t = h.replace("#", "");
+                if (t.length === 3) return t;
+                return hex6to3("#" + t).slice(1);
+            };
+            const zigzagMap = (w, h) => {
+                const m = new Uint32Array(w * h);
+                let i = 0;
+                for (let y = 0; y < h; y++) {
+                    if (y % 2 === 0) {
+                        for (let x = 0; x < w; x++) m[i++] = y * w + x;
+                    } else {
+                        for (let x = w - 1; x >= 0; x--) m[i++] = y * w + x;
+                    }
+                }
+                return m;
+            };
+            const mapIndices = (w, h, fn) => {
+                const out = new Uint32Array(w * h);
+                let i = 0;
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out[i++] = fn(x, y);
+                return out;
+            };
+            const remap = (s, w2, h2, m) => {
+                const out = new Uint8Array(w2 * h2);
+                for (let i = 0; i < out.length; i++) out[i] = s.data[m[i]];
+                return { w: w2, h: h2, data: out, palette: s.palette.slice() };
+            };
+            const flipH = (s) =>
+                remap(
+                    s,
+                    s.w,
+                    s.h,
+                    mapIndices(s.w, s.h, (x, y) => y * s.w + (s.w - 1 - x))
+                );
+            const flipV = (s) =>
+                remap(
+                    s,
+                    s.w,
+                    s.h,
+                    mapIndices(s.w, s.h, (x, y) => (s.h - 1 - y) * s.w + x)
+                );
+            const rot90 = (s) => {
+                const { w, h } = s,
+                    m = new Uint32Array(w * h);
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) m[x * h + (h - 1 - y)] = y * w + x;
+                const out = new Uint8Array(w * h);
+                for (let i = 0; i < out.length; i++) out[i] = s.data[m[i]];
+                return { w: h, h: w, data: out, palette: s.palette.slice() };
+            };
+            const rot180 = (s) => flipV(flipH(s));
+            const rot270 = (s) => rot90(rot180(s));
 
-      <div class="status" style="margin-top:10px">
-        <div class="pill" id="statusTool">Tool: Pencil</div>
-        <div class="pill" id="statusColor">Color: A</div>
-        <div class="pill" id="statusXY">X,Y: –</div>
-        <div class="pill" id="statusGrid">Grid: On</div>
-        <div class="pill" id="dimLabel">(16×16)</div>
-      </div>
-    </section>
+            function b128encode(bytes) {
+                let out = "",
+                    acc = 0,
+                    bits = 0;
+                for (let i = 0; i < bytes.length; i++) {
+                    acc = (acc << 8) | bytes[i];
+                    bits += 8;
+                    while (bits >= 7) {
+                        bits -= 7;
+                        out += String.fromCharCode((acc >> bits) & 127);
+                    }
+                }
+                if (bits > 0) out += String.fromCharCode((acc << (7 - bits)) & 127);
+                return out;
+            }
 
-    <!-- Center: Canvas -->
-    <section class="card" style="min-height:0">
-      <h2>Editor</h2>
-      <canvas id="stage" width="512" height="512"></canvas>
-    </section>
+            function encodePacked(sprite, paletteHex) {
+                const { w, h, data } = sprite;
+                const pal = paletteHex.map(toRGB3);
+                let map = b36(pal.length);
+                for (const hex of pal) map += hex;
+                const totalBytes = (data.length + 1) >> 1;
+                const bytes = new Uint8Array(totalBytes);
+                for (let i = 0, bi = 0; i < data.length; i += 2, bi++) bytes[bi] = (data[i] << 4) | (i + 1 < data.length ? data[i + 1] : 0);
+                const diff = new Uint8Array(totalBytes);
+                let prev = 0;
+                for (let i = 0; i < totalBytes; i++) {
+                    const b = bytes[i];
+                    diff[i] = b ^ prev;
+                    prev = b;
+                }
+                const comp = [];
+                for (let i = 0; i < diff.length; i++) {
+                    const b = diff[i];
+                    if (b === 0) {
+                        let c = 1;
+                        while (i + 1 < diff.length && diff[i + 1] === 0 && c < 255) {
+                            c++;
+                            i++;
+                        }
+                        comp.push(0, c);
+                    } else comp.push(b);
+                }
+                const data128 = b128encode(Uint8Array.from(comp));
+                let dims = "";
+                if (w !== DEF_W || h !== DEF_H) {
+                    if (w === h) dims = b36(w);
+                    else {
+                        if (w !== DEF_W) dims += b36(w);
+                        dims += "x";
+                        if (h !== DEF_H) dims += b36(h);
+                    }
+                }
+                return dims + "|" + map + data128;
+            }
 
-    <!-- Right: Preview & Stats -->
-    <section class="card">
-      <h2>Preview</h2>
-      <div class="row">
-        <label>Scale <input id="scale" type="number" min="1" max="64" value="10" style="width:80px"></label>
-        <label>Fit WxH <input id="fitw" type="number" min="1" max="1024" value="160" style="width:80px">×<input id="fith" type="number" min="1" max="1024" value="160" style="width:80px"></label>
-      </div>
-      <canvas id="preview" width="160" height="160" style="margin-top:8px"></canvas>
-      <p style="color:var(--muted);font-size:12px">Nearest‑neighbor. Checkerboard = transparency.</p>
+            function encodeWithBestOrder(sprite, paletteHex) {
+                const orders = [
+                    { id: "", map: null },
+                    { id: "Z", map: zigzagMap(sprite.w, sprite.h) },
+                ];
+                let best = null;
+                for (const o of orders) {
+                    const mapped = o.map
+                        ? {
+                              w: sprite.w,
+                              h: sprite.h,
+                              data: (() => {
+                                  const d = new Uint8Array(sprite.data.length);
+                                  for (let i = 0; i < o.map.length; i++) d[i] = sprite.data[o.map[i]];
+                                  return d;
+                              })(),
+                              palette: sprite.palette,
+                          }
+                        : sprite;
+                    const enc = encodePacked(mapped, paletteHex);
+                    const [dims, rest] = enc.split("|");
+                    const palLen = 1 + paletteHex.length * 3;
+                    const pal = rest.slice(0, palLen);
+                    const data = rest.slice(palLen);
+                    const cand = o.id ? dims + "|" + pal + o.id + data : enc;
+                    if (!best || cand.length < best.length) best = cand;
+                }
+                return best;
+            }
 
-      <h2 style="margin-top:10px">Data</h2>
-      <div id="stats" class="stat"></div>
-      <div style="margin-top:8px;color:var(--muted);font-size:12px">
-        Shortcuts: <span class="kbd">P</span>encil <span class="kbd">E</span>raser <span class="kbd">F</span>ill <span class="kbd">I</span>drop <span class="kbd">L</span>ine <span class="kbd">R</span>ect <span class="kbd">G</span> Filled <span class="kbd">M</span>/<span class="kbd">N</span> mirror
-      </div>
-    </section>
-  </div>
+            function encodeAuto(sprite, paletteHex) {
+                return encodeWithBestOrder(sprite, paletteHex);
+            }
 
-  <script src="tinysprites.min.js"></script>
-  <script>
-  // ===== helpers =====
-  const $=s=>document.querySelector(s), cap=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
-  async function copyText(text){
-    try{ await navigator.clipboard.writeText(text); }
-    catch{
-      const ta=document.createElement('textarea');
-      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; ta.setAttribute('readonly','');
-      document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(_){ }
-      document.body.removeChild(ta);
-    }
-  }
-  function hex6to3(hex){
-    hex=hex.trim().toLowerCase().replace(/^#/,'');
-    if(!/^[0-9a-f]{6}$/.test(hex)) throw Error('need 6 hex');
-    const q=n=>Math.max(0,Math.min(15,Math.round(n/17))).toString(16);
-    return '#'+q(parseInt(hex.slice(0,2),16))+q(parseInt(hex.slice(2,4),16))+q(parseInt(hex.slice(4,6),16));
-  }
+            // ===== DOM refs =====
+            const grid = $("#stage"),
+                gctx = grid.getContext("2d");
+            const prev = $("#preview"),
+                pctx = prev.getContext("2d");
 
-  // ===== DOM refs =====
-  const grid=$('#stage'), gctx=grid.getContext('2d');
-  const prev=$('#preview'), pctx=prev.getContext('2d');
+            // ===== state =====
+            let W = 16,
+                H = 16,
+                cell = 0,
+                offX = 0,
+                offY = 0;
+            let showGrid = true;
+            let paletteHex = [];
 
-  // ===== state =====
-  let W=16,H=16,cell=0,offX=0,offY=0; let showGrid=true;
-  let paletteHex=[];
-  let activeIndex=0, tool='pencil', mirrorX=false, mirrorY=false;
-  const undo=[], redo=[]; const MAX_UNDO=120;
-  let sprite=TinySprites.create(W,H,0,[]);
+            let DEF_W = 16,
+                DEF_H = 16;
+            let activeIndex = 0,
+                tool = "pencil",
+                mirrorX = false,
+                mirrorY = false;
+            const undo = [],
+                redo = [];
+            const MAX_UNDO = 120;
+            let sprite = TinySprites.create(W, H, 0, []);
+            TinySprites.defaultW = DEF_W;
+            TinySprites.defaultH = DEF_H;
 
-  // ===== undo =====
-  function save(){ undo.push({d:new Uint8Array(sprite.data),w:W,h:H,p:[...paletteHex]}); if(undo.length>MAX_UNDO)undo.shift(); redo.length=0; }
-  function doUndo(){ if(!undo.length)return; const cur={d:new Uint8Array(sprite.data),w:W,h:H,p:[...paletteHex]}; redo.push(cur); const st=undo.pop(); sprite.data=st.d; W=sprite.w=st.w; H=sprite.h=st.h; paletteHex=[...st.p]; sprite.palette=TinySprites.makePalette(paletteHex); activeIndex=paletteHex.length>0?1:0; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); }
-  function doRedo(){ if(!redo.length)return; const cur={d:new Uint8Array(sprite.data),w:W,h:H,p:[...paletteHex]}; undo.push(cur); const st=redo.pop(); sprite.data=st.d; W=sprite.w=st.w; H=sprite.h=st.h; paletteHex=[...st.p]; sprite.palette=TinySprites.makePalette(paletteHex); activeIndex=paletteHex.length>0?1:0; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); }
+            // ===== undo =====
+            function save() {
+                undo.push({ d: new Uint8Array(sprite.data), w: W, h: H, p: [...paletteHex] });
+                if (undo.length > MAX_UNDO) undo.shift();
+                redo.length = 0;
+            }
+            function doUndo() {
+                if (!undo.length) return;
+                const cur = { d: new Uint8Array(sprite.data), w: W, h: H, p: [...paletteHex] };
+                redo.push(cur);
+                const st = undo.pop();
+                sprite.data = st.d;
+                W = sprite.w = st.w;
+                H = sprite.h = st.h;
+                paletteHex = [...st.p];
+                sprite.palette = TinySprites.makePalette(paletteHex);
+                activeIndex = paletteHex.length > 0 ? 1 : 0;
+                $("#w").value = W;
+                $("#h").value = H;
+                $("#fitw").value = W * 10;
+                $("#fith").value = H * 10;
+                drawAll();
+            }
+            function doRedo() {
+                if (!redo.length) return;
+                const cur = { d: new Uint8Array(sprite.data), w: W, h: H, p: [...paletteHex] };
+                undo.push(cur);
+                const st = redo.pop();
+                sprite.data = st.d;
+                W = sprite.w = st.w;
+                H = sprite.h = st.h;
+                paletteHex = [...st.p];
+                sprite.palette = TinySprites.makePalette(paletteHex);
+                activeIndex = paletteHex.length > 0 ? 1 : 0;
+                $("#w").value = W;
+                $("#h").value = H;
+                $("#fitw").value = W * 10;
+                $("#fith").value = H * 10;
+                drawAll();
+            }
 
-  // ===== palette UI =====
-  function rebuildPaletteUI(){
-    const el=$('#palette'); el.innerHTML='';
-    
-    // Transparent color chip
-    const t=document.createElement('div'); t.className='chip'; t.style.alignItems='center'; t.style.justifyContent='center';
-    const tSw=document.createElement('div'); 
-    tSw.className='sw'; 
-    tSw.style.background='conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/12px 12px';
-    tSw.style.cursor='pointer';
-    tSw.title='Transparent (T)'; // Show it's transparent
-    if(activeIndex===0) tSw.classList.add('selected');
-    tSw.onclick=()=>{activeIndex=0; updateStatus(); rebuildPaletteUI();};
-    t.appendChild(tSw);
-    
-    // Add keyboard shortcut indicator for transparent
-    const tShortcut = document.createElement('div');
-    tShortcut.textContent = 'T';
-    tShortcut.style.fontSize = '11px';
-    tShortcut.style.color = '#8b9bb4';
-    tShortcut.style.fontWeight = '600';
-    tShortcut.style.marginTop = '2px';
-    tShortcut.style.fontFamily = 'ui-monospace, monospace';
-    tShortcut.style.padding = '2px 4px';
-    tShortcut.style.background = 'rgba(139, 155, 180, 0.1)';
-    tShortcut.style.borderRadius = '4px';
-    t.appendChild(tShortcut);
-    
-    el.appendChild(t);
-    
-    if (paletteHex.length === 0) {
-      const emptyMsg = document.createElement('div');
-      emptyMsg.style.color = 'var(--muted)';
-      emptyMsg.style.fontSize = '16px';
-      emptyMsg.style.textAlign = 'center';
-      emptyMsg.style.padding = '40px 20px';
-      emptyMsg.style.gridColumn = '1 / -1';
-      emptyMsg.innerHTML = '🎨 <br><strong>No colors in palette</strong><br>Add colors below to start drawing!';
-      el.appendChild(emptyMsg);
-    } else {
-      paletteHex.forEach((hex,i)=>{
-        const chip=document.createElement('div'); chip.className='chip';
-        
-        const sw=document.createElement('div'); 
-        sw.className='sw'; 
-        sw.style.background=hex; 
-        sw.style.cursor='pointer';
-        sw.title=`${hex} (${String.fromCharCode(65+i)})`; // Show hex and keyboard shortcut
-        if(activeIndex===i+1) sw.classList.add('selected');
-        sw.onclick=()=>{activeIndex=i+1; updateStatus(); rebuildPaletteUI();};
-        chip.appendChild(sw);
-        
-        // Add keyboard shortcut indicator
-        const shortcut = document.createElement('div');
-        shortcut.textContent = String.fromCharCode(65+i);
-        shortcut.style.fontSize = '11px';
-        shortcut.style.color = '#8b9bb4';
-        shortcut.style.fontWeight = '600';
-        shortcut.style.marginTop = '2px';
-        shortcut.style.fontFamily = 'ui-monospace, monospace';
-        shortcut.style.padding = '2px 4px';
-        shortcut.style.background = 'rgba(139, 155, 180, 0.1)';
-        shortcut.style.borderRadius = '4px';
-        chip.appendChild(shortcut);
-        
-        el.appendChild(chip);
-      });
-    }
-  }
+            // ===== palette UI =====
+            function rebuildPaletteUI() {
+                const el = $("#palette");
+                el.innerHTML = "";
 
-  // ===== layout & drawing =====
-  function setSize(w,h){ W=w|0; H=h|0; sprite=TinySprites.create(W,H,0,paletteHex); activeIndex=paletteHex.length>0?1:0; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); }
-  function layout(){
-    const d=window.devicePixelRatio||1, vw=grid.clientWidth*d; grid.width=grid.height=vw;
-    cell=Math.max(1,Math.floor(grid.width/Math.max(W,H)));
-    const tw=W*cell, th=H*cell; offX=Math.floor((grid.width-tw)/2); offY=Math.floor((grid.height-th)/2);
-  }
-  function drawGrid(){
-    gctx.setTransform(1,0,0,1,0,0); gctx.clearRect(0,0,grid.width,grid.height); gctx.imageSmoothingEnabled=false;
-    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-      const idx=sprite.data[y*W+x]; if(!idx) continue; const [r,g,b,a]=sprite.palette[idx]||[0,0,0,0];
-      gctx.fillStyle=`rgba(${r},${g},${b},${a/255})`; gctx.fillRect(offX+x*cell,offY+y*cell,cell,cell);
-    }
-    if(showGrid){ gctx.strokeStyle='rgba(255,255,255,0.08)'; gctx.lineWidth=1; gctx.beginPath();
-      for(let x=0;x<=W;x++){const X=offX+x*cell+0.5; gctx.moveTo(X,offY+0.5); gctx.lineTo(X,offY+H*cell+0.5);} 
-      for(let y=0;y<=H;y++){const Y=offY+y*cell+0.5; gctx.moveTo(offX+0.5,Y); gctx.lineTo(offX+W*cell+0.5,Y);} gctx.stroke(); }
-    gctx.fillStyle='rgba(0,0,0,0.55)'; gctx.fillRect(offX,offY-22,76,18);
-    gctx.fillStyle='#e6e6ee'; gctx.font='12px ui-monospace,monospace'; gctx.fillText(`${W}×${H}`,offX+8,offY-9);
-    $('#dimLabel').textContent=`(${W}×${H})`;
-  }
-  function drawPreview(){ const fw=+$('#fitw').value||160, fh=+$('#fith').value||160; prev.width=fw; prev.height=fh; TinySprites.draw(pctx, sprite, 0,0, { fit:{w:fw,h:fh} }); }
-  function updateStats(){
-    const palTokens=paletteHex.map(h=>h.replace('#',''));
-    const rle = TinySprites.encodeWithBestOrder(sprite, palTokens, false);
-    const raw = TinySprites.encodeWithBestOrder(sprite, palTokens, true);
-    const best = TinySprites.encodeAuto(sprite, palTokens);
-    const bp=(s)=>new Blob([s]).size;
-    $('#stats').textContent =
-`W×H: ${W}×${H}
-Palette: T${paletteHex.length > 0 ? ' + ' + paletteHex.map((h,i)=>String.fromCharCode(65+i)+':'+h).join(', ') : ''}
+                // Transparent color chip
+                const t = document.createElement("div");
+                t.className = "chip";
+                t.style.alignItems = "center";
+                t.style.justifyContent = "center";
+                const tSw = document.createElement("div");
+                tSw.className = "sw";
+                tSw.style.background = "conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/12px 12px";
+                tSw.style.cursor = "pointer";
+                tSw.title = "Transparent (T)"; // Show it's transparent
+                if (activeIndex === 0) tSw.classList.add("selected");
+                tSw.onclick = () => {
+                    activeIndex = 0;
+                    updateStatus();
+                    rebuildPaletteUI();
+                };
+                t.appendChild(tSw);
+
+                // Add keyboard shortcut indicator for transparent
+                const tShortcut = document.createElement("div");
+                tShortcut.textContent = "T";
+                tShortcut.style.fontSize = "11px";
+                tShortcut.style.color = "#8b9bb4";
+                tShortcut.style.fontWeight = "600";
+                tShortcut.style.marginTop = "2px";
+                tShortcut.style.fontFamily = "ui-monospace, monospace";
+                tShortcut.style.padding = "2px 4px";
+                tShortcut.style.background = "rgba(139, 155, 180, 0.1)";
+                tShortcut.style.borderRadius = "4px";
+                t.appendChild(tShortcut);
+
+                el.appendChild(t);
+
+                if (paletteHex.length === 0) {
+                    const emptyMsg = document.createElement("div");
+                    emptyMsg.style.color = "var(--muted)";
+                    emptyMsg.style.fontSize = "16px";
+                    emptyMsg.style.textAlign = "center";
+                    emptyMsg.style.padding = "40px 20px";
+                    emptyMsg.style.gridColumn = "1 / -1";
+                    emptyMsg.innerHTML = "🎨 <br><strong>No colors in palette</strong><br>Add colors below to start drawing!";
+                    el.appendChild(emptyMsg);
+                } else {
+                    paletteHex.forEach((hex, i) => {
+                        const chip = document.createElement("div");
+                        chip.className = "chip";
+
+                        const sw = document.createElement("div");
+                        sw.className = "sw";
+                        sw.style.background = hex;
+                        sw.style.cursor = "pointer";
+                        sw.title = `${hex} (${String.fromCharCode(65 + i)})`; // Show hex and keyboard shortcut
+                        if (activeIndex === i + 1) sw.classList.add("selected");
+                        sw.onclick = () => {
+                            activeIndex = i + 1;
+                            updateStatus();
+                            rebuildPaletteUI();
+                        };
+                        chip.appendChild(sw);
+
+                        // Add keyboard shortcut indicator
+                        const shortcut = document.createElement("div");
+                        shortcut.textContent = String.fromCharCode(65 + i);
+                        shortcut.style.fontSize = "11px";
+                        shortcut.style.color = "#8b9bb4";
+                        shortcut.style.fontWeight = "600";
+                        shortcut.style.marginTop = "2px";
+                        shortcut.style.fontFamily = "ui-monospace, monospace";
+                        shortcut.style.padding = "2px 4px";
+                        shortcut.style.background = "rgba(139, 155, 180, 0.1)";
+                        shortcut.style.borderRadius = "4px";
+                        chip.appendChild(shortcut);
+
+                        el.appendChild(chip);
+                    });
+                }
+            }
+
+            // ===== layout & drawing =====
+            function setSize(w, h) {
+                W = w | 0;
+                H = h | 0;
+                sprite = TinySprites.create(W, H, 0, paletteHex);
+                activeIndex = paletteHex.length > 0 ? 1 : 0;
+                $("#fitw").value = W * 10;
+                $("#fith").value = H * 10;
+                drawAll();
+            }
+            function layout() {
+                const d = window.devicePixelRatio || 1,
+                    vw = grid.clientWidth * d;
+                grid.width = grid.height = vw;
+                cell = Math.max(1, Math.floor(grid.width / Math.max(W, H)));
+                const tw = W * cell,
+                    th = H * cell;
+                offX = Math.floor((grid.width - tw) / 2);
+                offY = Math.floor((grid.height - th) / 2);
+            }
+            function drawGrid() {
+                gctx.setTransform(1, 0, 0, 1, 0, 0);
+                gctx.clearRect(0, 0, grid.width, grid.height);
+                gctx.imageSmoothingEnabled = false;
+                for (let y = 0; y < H; y++)
+                    for (let x = 0; x < W; x++) {
+                        const idx = sprite.data[y * W + x];
+                        if (!idx) continue;
+                        const [r, g, b, a] = sprite.palette[idx] || [0, 0, 0, 0];
+                        gctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+                        gctx.fillRect(offX + x * cell, offY + y * cell, cell, cell);
+                    }
+                if (showGrid) {
+                    gctx.strokeStyle = "rgba(255,255,255,0.08)";
+                    gctx.lineWidth = 1;
+                    gctx.beginPath();
+                    for (let x = 0; x <= W; x++) {
+                        const X = offX + x * cell + 0.5;
+                        gctx.moveTo(X, offY + 0.5);
+                        gctx.lineTo(X, offY + H * cell + 0.5);
+                    }
+                    for (let y = 0; y <= H; y++) {
+                        const Y = offY + y * cell + 0.5;
+                        gctx.moveTo(offX + 0.5, Y);
+                        gctx.lineTo(offX + W * cell + 0.5, Y);
+                    }
+                    gctx.stroke();
+                }
+                gctx.fillStyle = "rgba(0,0,0,0.55)";
+                gctx.fillRect(offX, offY - 22, 76, 18);
+                gctx.fillStyle = "#e6e6ee";
+                gctx.font = "12px ui-monospace,monospace";
+                gctx.fillText(`${W}×${H}`, offX + 8, offY - 9);
+                $("#dimLabel").textContent = `(${W}×${H})`;
+            }
+            function drawPreview() {
+                const fw = +$("#fitw").value || 160,
+                    fh = +$("#fith").value || 160;
+                prev.width = fw;
+                prev.height = fh;
+                TinySprites.draw(pctx, sprite, 0, 0, { fit: { w: fw, h: fh } });
+            }
+            function updateStats() {
+                const palTokens = paletteHex;
+                const rle = encodeWithBestOrder(sprite, palTokens, false);
+                const raw = encodeWithBestOrder(sprite, palTokens, true);
+                const best = encodeAuto(sprite, palTokens);
+                const bp = (s) => new Blob([s]).size;
+                $("#stats").textContent = `W×H: ${W}×${H}
+Palette: T${paletteHex.length > 0 ? " + " + paletteHex.map((h, i) => String.fromCharCode(65 + i) + ":" + h).join(", ") : ""}
 RLE*: ${rle.length} chars (~${bp(rle)} B)
 RAW*: ${raw.length} chars (~${bp(raw)} B)
 AUTO → ${best.length} chars`;
-  }
-  function updateStatus(){
-    $('#statusTool').textContent=`Tool: ${tool[0].toUpperCase()+tool.slice(1)}`;
-    $('#statusColor').textContent=`Color: ${activeIndex===0?'T':String.fromCharCode(64+activeIndex)}`;
-    $('#statusGrid').textContent=`Grid: ${showGrid?'On':'Off'}`;
-    document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('acc', b.dataset.tool===tool));
-    $('#mirrorX').classList.toggle('acc', mirrorX); $('#mirrorY').classList.toggle('acc', mirrorY);
-  }
-  function drawAll(){ layout(); drawGrid(); drawPreview(); updateStats(); updateStatus(); rebuildPaletteUI(); }
+            }
+            function updateStatus() {
+                $("#statusTool").textContent = `Tool: ${tool[0].toUpperCase() + tool.slice(1)}`;
+                $("#statusColor").textContent = `Color: ${activeIndex === 0 ? "T" : String.fromCharCode(64 + activeIndex)}`;
+                $("#statusGrid").textContent = `Grid: ${showGrid ? "On" : "Off"}`;
+                document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("acc", b.dataset.tool === tool));
+                $("#mirrorX").classList.toggle("acc", mirrorX);
+                $("#mirrorY").classList.toggle("acc", mirrorY);
+            }
+            function drawAll() {
+                layout();
+                drawGrid();
+                drawPreview();
+                updateStats();
+                updateStatus();
+                rebuildPaletteUI();
+            }
 
-  // ===== editor helpers =====
-  function cellFromEvent(ev){ const r=grid.getBoundingClientRect(), d=devicePixelRatio||1; const gx=(ev.clientX-r.left)*d, gy=(ev.clientY-r.top)*d; const x=Math.floor((gx-offX)/cell), y=Math.floor((gy-offY)/cell); if(x<0||y<0||x>=W||y>=H) return null; return {x,y}; }
-  function setPixel(x,y,idx){ const set=(xx,yy)=>{ if(xx>=0&&yy>=0&&xx<W&&yy<H) sprite.data[yy*W+xx]=idx; }; set(x,y); if(mirrorX) set(W-1-x,y); if(mirrorY) set(x,H-1-y); if(mirrorX&&mirrorY) set(W-1-x,H-1-y); }
-  function linePixels(x0,y0,x1,y1,cb){ let dx=Math.abs(x1-x0), sx=x0<x1?1:-1; let dy=-Math.abs(y1-y0), sy=y0<y1?1:-1; let err=dx+dy; for(;;){ cb(x0,y0); if(x0===x1&&y0===y1)break; const e2=2*err; if(e2>=dy){err+=dy;x0+=sx} if(e2<=dx){err+=dx;y0+=sy} } }
-  function floodFill(x,y,t,r){ if(t===r) return; const q=[[x,y]]; while(q.length){ const [cx,cy]=q.pop(), i=cy*W+cx; if(sprite.data[i]!==t) continue; sprite.data[i]=r; if(cx>0) q.push([cx-1,cy]); if(cx<W-1) q.push([cx+1,cy]); if(cy>0) q.push([cx,cy-1]); if(cy<H-1) q.push([cx,cy+1]); } }
+            // ===== editor helpers =====
+            function cellFromEvent(ev) {
+                const r = grid.getBoundingClientRect(),
+                    d = devicePixelRatio || 1;
+                const gx = (ev.clientX - r.left) * d,
+                    gy = (ev.clientY - r.top) * d;
+                const x = Math.floor((gx - offX) / cell),
+                    y = Math.floor((gy - offY) / cell);
+                if (x < 0 || y < 0 || x >= W || y >= H) return null;
+                return { x, y };
+            }
+            function setPixel(x, y, idx) {
+                const set = (xx, yy) => {
+                    if (xx >= 0 && yy >= 0 && xx < W && yy < H) sprite.data[yy * W + xx] = idx;
+                };
+                set(x, y);
+                if (mirrorX) set(W - 1 - x, y);
+                if (mirrorY) set(x, H - 1 - y);
+                if (mirrorX && mirrorY) set(W - 1 - x, H - 1 - y);
+            }
+            function linePixels(x0, y0, x1, y1, cb) {
+                let dx = Math.abs(x1 - x0),
+                    sx = x0 < x1 ? 1 : -1;
+                let dy = -Math.abs(y1 - y0),
+                    sy = y0 < y1 ? 1 : -1;
+                let err = dx + dy;
+                for (;;) {
+                    cb(x0, y0);
+                    if (x0 === x1 && y0 === y1) break;
+                    const e2 = 2 * err;
+                    if (e2 >= dy) {
+                        err += dy;
+                        x0 += sx;
+                    }
+                    if (e2 <= dx) {
+                        err += dx;
+                        y0 += sy;
+                    }
+                }
+            }
+            function floodFill(x, y, t, r) {
+                if (t === r) return;
+                const q = [[x, y]];
+                while (q.length) {
+                    const [cx, cy] = q.pop(),
+                        i = cy * W + cx;
+                    if (sprite.data[i] !== t) continue;
+                    sprite.data[i] = r;
+                    if (cx > 0) q.push([cx - 1, cy]);
+                    if (cx < W - 1) q.push([cx + 1, cy]);
+                    if (cy > 0) q.push([cx, cy - 1]);
+                    if (cy < H - 1) q.push([cx, cy + 1]);
+                }
+            }
 
-  // ===== drawing interactions =====
-  let painting=false, startCell=null, previewShape=null;
-  grid.addEventListener('contextmenu', e=>e.preventDefault());
-  grid.addEventListener('mousedown', e=>{
-    const c=cellFromEvent(e); if(!c) return; save(); painting=true; startCell=c;
-    if(tool==='eyedrop'){ activeIndex=sprite.data[c.y*W+c.x]; painting=false; updateStatus(); rebuildPaletteUI(); return; }
-    if(tool==='pencil'||tool==='eraser'||tool==='fill'){ applyAt(c,e); drawAll(); } else { previewShape={type:tool,from:c,to:c}; }
-  });
-  window.addEventListener('mouseup', ()=>{ if(!painting){ previewShape=null; return; } painting=false; if(previewShape){ commitPreview(previewShape); previewShape=null; drawAll(); } startCell=null; });
-  grid.addEventListener('mousemove', e=>{
-    const c=cellFromEvent(e); $('#statusXY').textContent=c?`X,Y: ${c.x},${c.y}`:'X,Y: –';
-    if(!c||!painting) return; if(tool==='pencil'||tool==='eraser'){ applyAt(c,e); drawAll(); }
-    else if(tool==='line'||tool==='rect'||tool==='rectfill'){ previewShape={type:tool,from:startCell,to:c}; drawGrid(); drawPreviewOverlay(previewShape); drawPreview(); updateStats(); }
-  });
-  function applyAt(c,e){ const idx=(e.button===2||tool==='eraser')?0:activeIndex; if(tool==='fill'){ const t=sprite.data[c.y*W+c.x]; floodFill(c.x,c.y,t,idx);} else { setPixel(c.x,c.y,idx);} }
-  function commitPreview(sh){ const idx=(tool==='eraser')?0:activeIndex, a=sh.from, b=sh.to; if(sh.type==='line'){ linePixels(a.x,a.y,b.x,b.y,(x,y)=>setPixel(x,y,idx)); }
-    else { const x0=Math.min(a.x,b.x), x1=Math.max(a.x,b.x), y0=Math.min(a.y,b.y), y1=Math.max(a.y,b.y);
-      if(sh.type==='rectfill'){ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) setPixel(x,y,idx); }
-      else { for(let x=x0;x<=x1;x++){ setPixel(x,y0,idx); setPixel(x,y1,idx);} for(let y=y0;y<=y1;y++){ setPixel(x0,y,idx); setPixel(x1,y,idx);} } }
-  }
-  function drawPreviewOverlay(sh){ if(!sh)return; gctx.save(); gctx.globalAlpha=0.8; const dc=(x,y)=>{ gctx.fillStyle='rgba(255,255,255,0.25)'; gctx.fillRect(offX+x*cell,offY+y*cell,cell,cell); };
-    if(sh.type==='line'){ linePixels(sh.from.x,sh.from.y,sh.to.x,sh.to.y,dc); }
-    else{ const x0=Math.min(sh.from.x,sh.to.x), x1=Math.max(sh.from.x,sh.to.x), y0=Math.min(sh.from.y,sh.to.y), y1=Math.max(sh.from.y,sh.to.y);
-      if(sh.type==='rectfill'){ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) dc(x,y); }
-      else { for(let x=x0;x<=x1;x++){ dc(x,y0); dc(x,y1);} for(let y=y0;y<=y1;y++){ dc(x0,y); dc(x1,y);} } }
-    gctx.restore(); }
+            // ===== drawing interactions =====
+            let painting = false,
+                startCell = null,
+                previewShape = null;
+            grid.addEventListener("contextmenu", (e) => e.preventDefault());
+            grid.addEventListener("mousedown", (e) => {
+                const c = cellFromEvent(e);
+                if (!c) return;
+                save();
+                painting = true;
+                startCell = c;
+                if (tool === "eyedrop") {
+                    activeIndex = sprite.data[c.y * W + c.x];
+                    painting = false;
+                    updateStatus();
+                    rebuildPaletteUI();
+                    return;
+                }
+                if (tool === "pencil" || tool === "eraser" || tool === "fill") {
+                    applyAt(c, e);
+                    drawAll();
+                } else {
+                    previewShape = { type: tool, from: c, to: c };
+                }
+            });
+            window.addEventListener("mouseup", () => {
+                if (!painting) {
+                    previewShape = null;
+                    return;
+                }
+                painting = false;
+                if (previewShape) {
+                    commitPreview(previewShape);
+                    previewShape = null;
+                    drawAll();
+                }
+                startCell = null;
+            });
+            grid.addEventListener("mousemove", (e) => {
+                const c = cellFromEvent(e);
+                $("#statusXY").textContent = c ? `X,Y: ${c.x},${c.y}` : "X,Y: –";
+                if (!c || !painting) return;
+                if (tool === "pencil" || tool === "eraser") {
+                    applyAt(c, e);
+                    drawAll();
+                } else if (tool === "line" || tool === "rect" || tool === "rectfill") {
+                    previewShape = { type: tool, from: startCell, to: c };
+                    drawGrid();
+                    drawPreviewOverlay(previewShape);
+                    drawPreview();
+                    updateStats();
+                }
+            });
+            function applyAt(c, e) {
+                const idx = e.button === 2 || tool === "eraser" ? 0 : activeIndex;
+                if (tool === "fill") {
+                    const t = sprite.data[c.y * W + c.x];
+                    floodFill(c.x, c.y, t, idx);
+                } else {
+                    setPixel(c.x, c.y, idx);
+                }
+            }
+            function commitPreview(sh) {
+                const idx = tool === "eraser" ? 0 : activeIndex,
+                    a = sh.from,
+                    b = sh.to;
+                if (sh.type === "line") {
+                    linePixels(a.x, a.y, b.x, b.y, (x, y) => setPixel(x, y, idx));
+                } else {
+                    const x0 = Math.min(a.x, b.x),
+                        x1 = Math.max(a.x, b.x),
+                        y0 = Math.min(a.y, b.y),
+                        y1 = Math.max(a.y, b.y);
+                    if (sh.type === "rectfill") {
+                        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) setPixel(x, y, idx);
+                    } else {
+                        for (let x = x0; x <= x1; x++) {
+                            setPixel(x, y0, idx);
+                            setPixel(x, y1, idx);
+                        }
+                        for (let y = y0; y <= y1; y++) {
+                            setPixel(x0, y, idx);
+                            setPixel(x1, y, idx);
+                        }
+                    }
+                }
+            }
+            function drawPreviewOverlay(sh) {
+                if (!sh) return;
+                gctx.save();
+                gctx.globalAlpha = 0.8;
+                const dc = (x, y) => {
+                    gctx.fillStyle = "rgba(255,255,255,0.25)";
+                    gctx.fillRect(offX + x * cell, offY + y * cell, cell, cell);
+                };
+                if (sh.type === "line") {
+                    linePixels(sh.from.x, sh.from.y, sh.to.x, sh.to.y, dc);
+                } else {
+                    const x0 = Math.min(sh.from.x, sh.to.x),
+                        x1 = Math.max(sh.from.x, sh.to.x),
+                        y0 = Math.min(sh.from.y, sh.to.y),
+                        y1 = Math.max(sh.from.y, sh.to.y);
+                    if (sh.type === "rectfill") {
+                        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) dc(x, y);
+                    } else {
+                        for (let x = x0; x <= x1; x++) {
+                            dc(x, y0);
+                            dc(x, y1);
+                        }
+                        for (let y = y0; y <= y1; y++) {
+                            dc(x0, y);
+                            dc(x1, y);
+                        }
+                    }
+                }
+                gctx.restore();
+            }
 
-  // ===== buttons/inputs =====
-  $('#applySize').onclick=()=>setSize(cap(+$('#w').value,1,64), cap(+$('#h').value,1,64));
-  $('#gridToggle').onchange=e=>{ showGrid=e.target.checked; updateStatus(); drawGrid(); };
-  document.querySelectorAll('[data-tool]').forEach(b=> b.onclick=()=>{ tool=b.dataset.tool; updateStatus();});
-  $('#mirrorX').onclick=()=>{ mirrorX=!mirrorX; updateStatus(); };
-  $('#mirrorY').onclick=()=>{ mirrorY=!mirrorY; updateStatus(); };
-  $('#clear').onclick=()=>{ save(); sprite.data.fill(0); drawAll(); };
-  $('#rotL').onclick=()=>{ save(); sprite=TinySprites.rot270(sprite); W=sprite.w; H=sprite.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); };
-  $('#rotR').onclick=()=>{ save(); sprite=TinySprites.rot90(sprite);  W=sprite.w; H=sprite.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; drawAll(); };
-  $('#flipH').onclick=()=>{ save(); sprite=TinySprites.flipH(sprite); drawAll(); };
-  $('#flipV').onclick=()=>{ save(); sprite=TinySprites.flipV(sprite); drawAll(); };
+            // ===== buttons/inputs =====
+            $("#applySize").onclick = () => setSize(cap(+$("#w").value, 1, 64), cap(+$("#h").value, 1, 64));
+            $("#gridToggle").onchange = (e) => {
+                showGrid = e.target.checked;
+                updateStatus();
+                drawGrid();
+            };
+            document.querySelectorAll("[data-tool]").forEach(
+                (b) =>
+                    (b.onclick = () => {
+                        tool = b.dataset.tool;
+                        updateStatus();
+                    })
+            );
+            $("#mirrorX").onclick = () => {
+                mirrorX = !mirrorX;
+                updateStatus();
+            };
+            $("#mirrorY").onclick = () => {
+                mirrorY = !mirrorY;
+                updateStatus();
+            };
+            $("#clear").onclick = () => {
+                save();
+                sprite.data.fill(0);
+                drawAll();
+            };
+            $("#rotL").onclick = () => {
+                save();
+                sprite = rot270(sprite);
+                W = sprite.w;
+                H = sprite.h;
+                $("#w").value = W;
+                $("#h").value = H;
+                $("#fitw").value = W * 10;
+                $("#fith").value = H * 10;
+                drawAll();
+            };
+            $("#rotR").onclick = () => {
+                save();
+                sprite = rot90(sprite);
+                W = sprite.w;
+                H = sprite.h;
+                $("#w").value = W;
+                $("#h").value = H;
+                $("#fitw").value = W * 10;
+                $("#fith").value = H * 10;
+                drawAll();
+            };
+            $("#flipH").onclick = () => {
+                save();
+                sprite = flipH(sprite);
+                drawAll();
+            };
+            $("#flipV").onclick = () => {
+                save();
+                sprite = flipV(sprite);
+                drawAll();
+            };
 
-  $('#scale').oninput=drawPreview; $('#fitw').oninput=drawPreview; $('#fith').oninput=drawPreview;
+            $("#scale").oninput = drawPreview;
+            $("#fitw").oninput = drawPreview;
+            $("#fith").oninput = drawPreview;
 
-  // Color preview functionality
-  $('#colorPreview').onclick=()=>{
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = '#ff0000';
-    input.onchange = (e) => {
-      $('#newColorHex').value = e.target.value;
-      $('#colorPreview').style.background = e.target.value;
-    };
-    input.click();
-  };
-  
-  // Update color preview when typing
-  $('#newColorHex').oninput = (e) => {
-    const val = e.target.value.trim();
-    if(/^#[0-9a-f]{3,6}$/i.test(val)) {
-      $('#colorPreview').style.background = val;
-    }
-  };
-  
-  $('#addColor').onclick=()=>{ 
-    const box=$('#newColorHex'); 
-    let v=(box.value||'').trim().toLowerCase(); 
-    if(!v){ alert('Enter #RRGGBB'); return; } 
-    if(!v.startsWith('#')) v='#'+v; 
-    if(!/^#[0-9a-f]{6}$/.test(v)){ alert('Please enter 6-digit hex like #112233'); return; } 
-    try{ v=hex6to3(v);}catch(_){ } 
-    if(paletteHex.length>=26) return alert('Max 26 colors'); 
-    paletteHex.push(v); 
-    sprite.palette=TinySprites.makePalette(paletteHex); 
-    box.value=''; 
-    $('#colorPreview').style.background='#1a2032';
-    drawAll(); 
-  };
-  $('#resetPalette').onclick=()=>{ paletteHex=[]; sprite.palette=TinySprites.makePalette(paletteHex); drawAll(); };
+            // Color preview functionality
+            $("#colorPreview").onclick = () => {
+                const input = document.createElement("input");
+                input.type = "color";
+                input.value = "#ff0000";
+                input.onchange = (e) => {
+                    $("#newColorHex").value = e.target.value;
+                    $("#colorPreview").style.background = e.target.value;
+                };
+                input.click();
+            };
 
-  $('#undoBtn').onclick=doUndo; $('#redoBtn').onclick=doRedo;
+            // Update color preview when typing
+            $("#newColorHex").oninput = (e) => {
+                const val = e.target.value.trim();
+                if (/^#[0-9a-f]{3,6}$/i.test(val)) {
+                    $("#colorPreview").style.background = val;
+                }
+            };
 
-  function currentEncoding(){ return (document.querySelector('input[name="enc"]:checked')||{}).value||'auto'; }
-  function packedRLE(){ return TinySprites.encodeWithBestOrder(sprite, paletteHex.map(h=>h.slice(1)), false); }
-  function packedRAW(){ return TinySprites.encodeWithBestOrder(sprite, paletteHex.map(h=>h.slice(1)), true); }
-  function packedAuto(){ return TinySprites.encodeAuto(sprite, paletteHex.map(h=>h.slice(1))); }
+            $("#addColor").onclick = () => {
+                const box = $("#newColorHex");
+                let v = (box.value || "").trim().toLowerCase();
+                if (!v) {
+                    alert("Enter #RRGGBB");
+                    return;
+                }
+                if (!v.startsWith("#")) v = "#" + v;
+                if (!/^#[0-9a-f]{6}$/.test(v)) {
+                    alert("Please enter 6-digit hex like #112233");
+                    return;
+                }
+                try {
+                    v = hex6to3(v);
+                } catch (_) {}
+                if (paletteHex.length >= 26) return alert("Max 26 colors");
+                paletteHex.push(v);
+                sprite.palette = TinySprites.makePalette(paletteHex);
+                box.value = "";
+                $("#colorPreview").style.background = "#1a2032";
+                drawAll();
+            };
+            $("#resetPalette").onclick = () => {
+                paletteHex = [];
+                sprite.palette = TinySprites.makePalette(paletteHex);
+                drawAll();
+            };
 
-  $('#copyPacked').onclick=async()=>{ await copyText(packedAuto()); };
-  $('#copyRLE').onclick=async()=>{ await copyText(packedRLE()); };
-  $('#copyRAW').onclick=async()=>{ await copyText(packedRAW()); };
-  $('#exportPng').onclick=()=>{ const s=+$('#scale').value||10; const can=TinySprites.toCanvas(sprite,s); const a=document.createElement('a'); a.href=can.toDataURL('image/png'); a.download='sprite.png'; a.click(); };
+            $("#undoBtn").onclick = doUndo;
+            $("#redoBtn").onclick = doRedo;
 
-  $('#loadPacked').onclick=()=>{ try{ const src=$('#io').value.trim(); const s=TinySprites.decodePacked(src); sprite=s; W=s.w; H=s.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; const pal=(src.split('|')[1]||''); if(pal) paletteHex=pal.split(/[.,]/).filter(Boolean).map(t=>t[0]==='#'?t:'#'+t); sprite.palette=TinySprites.makePalette(paletteHex); activeIndex=paletteHex.length>0?1:0; drawAll(); }catch(e){ alert('Invalid packed string'); } };
+            function currentEncoding() {
+                return (document.querySelector('input[name="enc"]:checked') || {}).value || "auto";
+            }
+            function packedRLE() {
+                return encodeWithBestOrder(sprite, paletteHex);
+            }
+            function packedRAW() {
+                return encodeWithBestOrder(sprite, paletteHex);
+            }
+            function packedAuto() {
+                return encodeAuto(sprite, paletteHex);
+            }
 
-  async function downloadRuntime(){
-    const candidates=['tinysprites.min.js','tinysprites.js'];
-    for(const url of candidates){ try{ const res=await fetch(url); if(!res.ok) throw new Error('bad status'); const txt=await res.text(); const blob=new Blob([txt],{type:'application/javascript'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=url.split('/').pop(); document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); a.remove(); return; }catch(_){ } }
-    const a=document.createElement('a'); a.href='tinysprites.min.js'; a.download='tinysprites.min.js'; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove();
-  }
-  $('#downloadLib').onclick=downloadRuntime;
+            $("#defW").onchange = () => {
+                DEF_W = cap(+$("#defW").value, 1, 64);
+                TinySprites.defaultW = DEF_W;
+            };
+            $("#defH").onchange = () => {
+                DEF_H = cap(+$("#defH").value, 1, 64);
+                TinySprites.defaultH = DEF_H;
+            };
 
-  // keys
-  document.addEventListener('keydown', e=>{
-    const k=e.key.toLowerCase();
-    if(e.metaKey||e.ctrlKey){ if(k==='z'){e.preventDefault();doUndo();return} if(k==='y'){e.preventDefault();doRedo();return} }
-    if(k==='p')tool='pencil'; else if(k==='e')tool='eraser'; else if(k==='f')tool='fill'; else if(k==='i')tool='eyedrop'; else if(k==='l')tool='line'; else if(k==='r')tool='rect'; else if(k==='g')tool='rectfill'; else if(k==='m')mirrorX=!mirrorX; else if(k==='n')mirrorY=!mirrorY; else if(k==='t')activeIndex=0; else if(k>='a'&&k<='z'&&paletteHex.length>0){ const idx=k.charCodeAt(0)-96; if(idx<=paletteHex.length)activeIndex=idx; } updateStatus();
-  });
+            $("#copyPacked").onclick = async () => {
+                await copyText(packedAuto());
+            };
+            $("#copyRLE").onclick = async () => {
+                await copyText(packedRLE());
+            };
+            $("#copyRAW").onclick = async () => {
+                await copyText(packedRAW());
+            };
+            $("#exportPng").onclick = () => {
+                const s = +$("#scale").value || 10;
+                const can = TinySprites.toCanvas(sprite, s);
+                const a = document.createElement("a");
+                a.href = can.toDataURL("image/png");
+                a.download = "sprite.png";
+                a.click();
+            };
 
-  window.addEventListener('resize', drawAll);
-  // Set initial fit dimensions based on sprite size
-  $('#fitw').value = W * 10;
-  $('#fith').value = H * 10;
-  drawAll();
-  </script>
-</body>
+            $("#loadPacked").onclick = () => {
+                try {
+                    const src = $("#io").value.trim();
+                    const s = TinySprites.decodePacked(src);
+                    sprite = s;
+                    W = s.w;
+                    H = s.h;
+                    $("#w").value = W;
+                    $("#h").value = H;
+                    $("#fitw").value = W * 10;
+                    $("#fith").value = H * 10;
+                    paletteHex = s.palette.slice(1).map((c) => hex6to3("#" + ((c[0] << 16) | (c[1] << 8) | c[2]).toString(16).padStart(6, "0")));
+                    sprite.palette = TinySprites.makePalette(paletteHex);
+                    activeIndex = paletteHex.length > 0 ? 1 : 0;
+                    drawAll();
+                } catch (e) {
+                    alert("Invalid packed string");
+                }
+            };
+
+            async function downloadRuntime() {
+                const candidates = ["tinysprites.min.js", "tinysprites.js"];
+                for (const url of candidates) {
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error("bad status");
+                        let txt = await res.text();
+                        txt = txt.replace(/defaultW:\d+,defaultH:\d+/, `defaultW:${DEF_W},defaultH:${DEF_H}`);
+                        const blob = new Blob([txt], { type: "application/javascript" });
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = url.split("/").pop();
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+                        a.remove();
+                        return;
+                    } catch (_) {}
+                }
+                const a = document.createElement("a");
+                a.href = "tinysprites.min.js";
+                a.download = "tinysprites.min.js";
+                a.target = "_blank";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+            $("#downloadLib").onclick = downloadRuntime;
+
+            // keys
+            document.addEventListener("keydown", (e) => {
+                const k = e.key.toLowerCase();
+                if (e.metaKey || e.ctrlKey) {
+                    if (k === "z") {
+                        e.preventDefault();
+                        doUndo();
+                        return;
+                    }
+                    if (k === "y") {
+                        e.preventDefault();
+                        doRedo();
+                        return;
+                    }
+                }
+                if (k === "p") tool = "pencil";
+                else if (k === "e") tool = "eraser";
+                else if (k === "f") tool = "fill";
+                else if (k === "i") tool = "eyedrop";
+                else if (k === "l") tool = "line";
+                else if (k === "r") tool = "rect";
+                else if (k === "g") tool = "rectfill";
+                else if (k === "m") mirrorX = !mirrorX;
+                else if (k === "n") mirrorY = !mirrorY;
+                else if (k === "t") activeIndex = 0;
+                else if (k >= "a" && k <= "z" && paletteHex.length > 0) {
+                    const idx = k.charCodeAt(0) - 96;
+                    if (idx <= paletteHex.length) activeIndex = idx;
+                }
+                updateStatus();
+            });
+
+            window.addEventListener("resize", drawAll);
+            // Set initial fit dimensions based on sprite size
+            $("#fitw").value = W * 10;
+            $("#fith").value = H * 10;
+            drawAll();
+        </script>
+    </body>
 </html>
