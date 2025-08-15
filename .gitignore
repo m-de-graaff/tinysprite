@@ -105,6 +105,10 @@ public
 tmp/
 temp/
 
+# Benchmark outputs
+benchmarks/sprite.png
+benchmarks/sprite.gif
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

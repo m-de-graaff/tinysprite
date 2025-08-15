@@ -23,17 +23,24 @@
 
 | Rank | File | Type | Size | Comparison |
 |------|------|------|------|------------|
+| 1 | **sprite-optimized.webp** | WebP Image | 0.09 KB | 0.89x |
+| 2 | **WebP ultra-compressed** | WebP ultra-compressed | 0.09 KB | 0.89x |
+| 3 | **WebP high-compressed** | WebP high-compressed | 0.09 KB | 0.89x |
+| 4 | **WebP medium-compressed** | WebP medium-compressed | 0.09 KB | 0.89x |
+| 5 | **WebP low-compressed** | WebP low-compressed | 0.09 KB | 0.89x |
 | 🎯 | **TinySprites Packed** | TinySprites Format | 0.11 KB | - |
-| 2 | **tiny_sprite.png** | PNG Image | 0.21 KB | 1.97x |
-| 3 | **tiny_sprite.gif** | GIF Animation | 0.66 KB | 6.23x |
-| 4 | **sprite.gif** | GIF Animation | 0.67 KB | 6.34x |
-| 5 | **sprite_original.png** | PNG Image | 1.00 KB | 9.46x |
+| 7 | **sprite-optimized.png** | PNG Image | 0.15 KB | 1.39x |
+| 8 | **PNG ultra-compressed** | PNG ultra-compressed | 0.15 KB | 1.39x |
+| 9 | **PNG high-compressed** | PNG high-compressed | 0.15 KB | 1.39x |
+| 10 | **PNG medium-compressed** | PNG medium-compressed | 0.15 KB | 1.40x |
+| 11 | **PNG low-compressed** | PNG low-compressed | 0.15 KB | 1.43x |
+| 12 | **sprite-optimized.avif** | AVIF Image | 0.48 KB | 4.55x |
 
 ## 🏆 Benchmark Summary
 
-- **Smallest file:** TinySprites Packed (0.11 KB)
-- **Second smallest:** tiny_sprite.png (0.21 KB)
-- **Largest file:** sprite_original.png (1.00 KB)
+- **Smallest file:** sprite-optimized.webp (0.09 KB)
+- **Second smallest:** WebP ultra-compressed (0.09 KB)
+- **Largest file:** sprite-optimized.avif (0.48 KB)
 - **TinySprites packed:** 0.11 KB
 
 ✅ **TinySprites format is competitive with image formats**
@@ -88,4 +95,4 @@ To run benchmarks on your own sprites:
 
 ---
 
-*Generated on 2025-08-15T14:54:05.661Z*
+*Generated on 2025-08-15T17:18:36.771Z*

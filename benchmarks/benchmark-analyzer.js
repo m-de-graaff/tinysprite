@@ -2,11 +2,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
 // The sprite to benchmark
 const TARGET_SPRITE = "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T";
 
-console.log('🔍 Analyzing sprite and benchmarks...\n');
+console.log('🔍 Analyzing sprite and benchmarks with Sharp optimization...\n');
 
 // Parse the packed sprite
 function parsePackedSprite(packed) {
@@ -58,28 +59,174 @@ function parsePackedSprite(packed) {
   };
 }
 
-// Analyze file sizes
-function analyzeFileSizes() {
-  const benchmarkDir = __dirname;
-  const files = fs.readdirSync(benchmarkDir).filter(file => 
-    file.endsWith('.png') || file.endsWith('.gif') || file.endsWith('.jpg') || file.endsWith('.jpeg')
-  );
+// Create optimized PNG using Sharp
+async function writeOptimizedPng(sprite, outPath, quality = 9, dither = 0) {
+  const { width, height, data, palette } = sprite;
   
-  const fileAnalysis = files.map(file => {
-    const filePath = path.join(benchmarkDir, file);
-    const stats = fs.statSync(filePath);
-    const sizeKB = (stats.size / 1024).toFixed(2);
+  // Create RGBA buffer
+  const rgba = Buffer.alloc(width * height * 4);
+  for (let i = 0; i < data.length; i++) {
+    const colorIndex = data[i];
+    const color = colorIndex === 0 ? [0, 0, 0, 0] : hexToRgba(palette[colorIndex - 1]);
+    const pos = i * 4;
+    rgba[pos] = color[0];
+    rgba[pos + 1] = color[1];
+    rgba[pos + 2] = color[2];
+    rgba[pos + 3] = color[3];
+  }
+  
+  // Use Sharp for heavy optimization
+  await sharp(rgba, { raw: { width, height, channels: 4 } })
+    .png({ 
+      compressionLevel: quality, // 0-9, higher = smaller file
+      adaptiveFiltering: false, // Disable adaptive filtering to preserve exact colors
+      palette: false, // Disable palette mode to preserve exact colors
+      dither: dither // Use passed dither value
+    })
+    .toFile(outPath);
+}
+
+// Create optimized WebP using Sharp
+async function writeOptimizedWebP(sprite, outPath, quality = 80, lossless = true) {
+  const { width, height, data, palette } = sprite;
+  
+  // Create RGBA buffer
+  const rgba = Buffer.alloc(width * height * 4);
+  for (let i = 0; i < data.length; i++) {
+    const colorIndex = data[i];
+    const color = colorIndex === 0 ? [0, 0, 0, 0] : hexToRgba(palette[colorIndex - 1]);
+    const pos = i * 4;
+    rgba[pos] = color[0];
+    rgba[pos + 1] = color[1];
+    rgba[pos + 2] = color[2];
+    rgba[pos + 3] = color[3];
+  }
+  
+  // Use Sharp for WebP optimization
+  await sharp(rgba, { raw: { width, height, channels: 4 } })
+    .webp({ 
+      quality,
+      lossless: lossless, // Use passed lossless value
+      nearLossless: false,
+      smartSubsample: true,
+      effort: 6 // 0-6, higher = better compression but slower
+    })
+    .toFile(outPath);
+}
+
+// JPEG is not suitable for pixel-perfect sprites due to lossy compression
+// This function is disabled to prevent color artifacts like #e6e6e6
+async function writeOptimizedJpeg(sprite, outPath, quality = 85) {
+  throw new Error('JPEG format disabled - use PNG or WebP for lossless sprite compression');
+}
+
+// Create optimized AVIF using Sharp (next-gen format)
+async function writeOptimizedAvif(sprite, outPath, quality = 80) {
+  const { width, height, data, palette } = sprite;
+  
+  // Create RGBA buffer
+  const rgba = Buffer.alloc(width * height * 4);
+  for (let i = 0; i < data.length; i++) {
+    const colorIndex = data[i];
+    const color = colorIndex === 0 ? [0, 0, 0, 0] : hexToRgba(palette[colorIndex - 1]);
+    const pos = i * 4;
+    rgba[pos] = color[0];
+    rgba[pos + 1] = color[1];
+    rgba[pos + 2] = color[2];
+    rgba[pos + 3] = color[3];
+  }
+  
+  // Use Sharp for AVIF optimization
+  await sharp(rgba, { raw: { width, height, channels: 4 } })
+    .avif({ 
+      quality,
+      effort: 9, // 0-9, higher = better compression but slower
+      chromaSubsampling: '4:4:4'
+    })
+    .toFile(outPath);
+}
+
+// Create multiple optimization levels for PNG
+async function writeMultiLevelPngs(sprite, basePath) {
+      const levels = [
+      { name: 'ultra-compressed', quality: 9, colors: 8, dither: 0 },
+      { name: 'high-compressed', quality: 8, colors: 16, dither: 0 },
+      { name: 'medium-compressed', quality: 6, colors: 32, dither: 0 },
+      { name: 'low-compressed', quality: 4, colors: 64, dither: 0 }
+    ];
+  
+  const results = [];
+  
+  for (const level of levels) {
+    const outPath = basePath.replace('.png', `-${level.name}.png`);
+    await writeOptimizedPng(sprite, outPath, level.quality, level.dither);
     
-    return {
-      name: file,
+    const stats = fs.statSync(outPath);
+    results.push({
+      name: `PNG ${level.name}`,
       size: stats.size,
-      sizeKB: sizeKB,
+      sizeKB: (stats.size / 1024).toFixed(2),
+      extension: '.png',
+      type: `PNG ${level.name}`,
+      optimization: level.name
+    });
+  }
+  
+  return results;
+}
+
+// Create multiple optimization levels for WebP
+async function writeMultiLevelWebPs(sprite, basePath) {
+      const levels = [
+      { name: 'ultra-compressed', quality: 60, effort: 6, lossless: true },
+      { name: 'high-compressed', quality: 75, effort: 5, lossless: true },
+      { name: 'medium-compressed', quality: 85, effort: 4, lossless: true },
+      { name: 'low-compressed', quality: 95, effort: 3, lossless: true }
+    ];
+  
+  const results = [];
+  
+  for (const level of levels) {
+    const outPath = basePath.replace('.webp', `-${level.name}.webp`);
+    await writeOptimizedWebP(sprite, outPath, level.quality, level.lossless);
+    
+    const stats = fs.statSync(outPath);
+    results.push({
+      name: `WebP ${level.name}`,
+      size: stats.size,
+      sizeKB: (stats.size / 1024).toFixed(2),
+      extension: '.webp',
+      type: `WebP ${level.name}`,
+      optimization: level.name
+    });
+  }
+  
+  return results;
+}
+
+function hexToRgba(hex) {
+  hex = String(hex).replace('#', '').trim().toLowerCase();
+  let r = 0, g = 0, b = 0, a = 255;
+  if (hex.length === 3) { r = parseInt(hex[0] + hex[0], 16); g = parseInt(hex[1] + hex[1], 16); b = parseInt(hex[2] + hex[2], 16); }
+  else if (hex.length === 6) { r = parseInt(hex.slice(0, 2), 16); g = parseInt(hex.slice(2, 4), 16); b = parseInt(hex.slice(4, 6), 16); }
+  return [r, g, b, a];
+}
+
+
+
+// Analyze file sizes for provided files
+function analyzeFileSizes(files) {
+  return files.map(file => {
+    const stats = fs.statSync(file);
+    const sizeKB = (stats.size / 1024).toFixed(2);
+    return {
+      name: path.basename(file),
+      size: stats.size,
+      sizeKB,
       extension: path.extname(file),
       type: getFileType(file)
     };
   });
-  
-  return fileAnalysis;
 }
 
 function getFileType(filename) {
@@ -89,17 +236,42 @@ function getFileType(filename) {
     case '.png': return 'PNG Image';
     case '.jpg':
     case '.jpeg': return 'JPEG Image';
+    case '.webp': return 'WebP Image';
+    case '.avif': return 'AVIF Image';
     default: return 'Unknown';
   }
 }
 
-// Generate benchmark report
-function generateBenchmarkReport() {
+// Generate benchmark report with Sharp optimization
+async function generateBenchmarkReport() {
   try {
     const sprite = parsePackedSprite(TARGET_SPRITE);
-    const fileAnalysis = analyzeFileSizes();
+
+    console.log('🔄 Generating optimized images with Sharp...');
     
-    // Add TinySprites to the comparison
+    // Generate base optimized images (lossless formats only)
+    const pngPath = path.join(__dirname, 'sprite-optimized.png');
+    const webpPath = path.join(__dirname, 'sprite-optimized.webp');
+    const avifPath = path.join(__dirname, 'sprite-optimized.avif');
+    
+    await Promise.all([
+      writeOptimizedPng(sprite, pngPath, 9),
+      writeOptimizedWebP(sprite, webpPath, 80),
+      writeOptimizedAvif(sprite, avifPath, 80)
+    ]);
+    
+    console.log('✅ Generated base optimized images');
+    
+    // Generate multi-level optimizations
+    console.log('🔄 Generating multi-level optimizations...');
+    const multiPngs = await writeMultiLevelPngs(sprite, pngPath);
+    const multiWebPs = await writeMultiLevelWebPs(sprite, webpPath);
+    
+    console.log('✅ Generated multi-level optimizations');
+
+    const fileAnalysis = analyzeFileSizes([pngPath, webpPath, avifPath]);
+    
+    // Combine all files for analysis
     const allFiles = [
       {
         name: 'TinySprites Packed',
@@ -109,7 +281,9 @@ function generateBenchmarkReport() {
         type: 'TinySprites Format',
         isTinySprites: true
       },
-      ...fileAnalysis
+      ...fileAnalysis,
+      ...multiPngs,
+      ...multiWebPs
     ];
     
     // Sort by size (smallest first)
@@ -119,14 +293,14 @@ function generateBenchmarkReport() {
     allFiles.forEach((file, index) => {
       if (index === 0) {
         file.rank = 'Smallest file';
+      } else if (index === allFiles.length - 1) {
+        file.rank = 'Largest file';
       } else if (index === 1) {
         file.rank = 'Second smallest file';
       } else if (index === 2) {
         file.rank = 'Third smallest file';
-      } else if (index === allFiles.length - 1) {
-        file.rank = 'Largest file';
       } else {
-        file.rank = `${(index + 1).toString().padStart(2, '0')}nd smallest file`;
+        file.rank = `${index + 1}th smallest file`;
       }
     });
     
@@ -143,9 +317,9 @@ function generateBenchmarkReport() {
     console.log('=====================================');
     allFiles.forEach(file => {
       const rank = file.rank.padEnd(20);
-      const name = file.name.padEnd(25);
+      const name = file.name.padEnd(30);
       const size = file.sizeKB.padStart(8);
-      const type = file.type.padEnd(20);
+      const type = file.type.padEnd(25);
       console.log(`${rank} | ${name} | ${size} KB | ${type}`);
     });
     
@@ -157,10 +331,10 @@ function generateBenchmarkReport() {
     
     allFiles.forEach(file => {
       if (file.isTinySprites) {
-        console.log(`🎯 ${file.name.padEnd(25)} | ${file.sizeKB.padStart(8)} KB | ${file.rank}`);
+        console.log(`🎯 ${file.name.padEnd(30)} | ${file.sizeKB.padStart(8)} KB | ${file.rank}`);
       } else {
         const ratio = (file.size / sprite.packedLength).toFixed(2);
-        console.log(`📁 ${file.name.padEnd(25)} | ${file.sizeKB.padStart(8)} KB | ${ratio}x | ${file.rank}`);
+        console.log(`📁 ${file.name.padEnd(30)} | ${file.sizeKB.padStart(8)} KB | ${ratio}x | ${file.rank}`);
       }
     });
     
@@ -177,6 +351,14 @@ function generateBenchmarkReport() {
     } else {
       console.log('📊 TinySprites format is larger than some image formats');
     }
+    
+    console.log('\n🚀 Sharp Optimization Results:');
+    console.log('=============================');
+    const sharpFiles = allFiles.filter(f => !f.isTinySprites);
+    const avgSize = (sharpFiles.reduce((sum, f) => sum + f.size, 0) / sharpFiles.length / 1024).toFixed(2);
+    console.log(`Average optimized size: ${avgSize} KB`);
+    console.log(`Best format: ${smallest.name} (${smallest.sizeKB} KB)`);
+    console.log(`Worst format: ${largest.name} (${largest.sizeKB} KB)`);
     
     return { sprite, allFiles };
     
@@ -643,25 +825,35 @@ To run benchmarks on your own sprites:
 }
 
 // Main execution
-const benchmarkData = generateBenchmarkReport();
-
-if (benchmarkData) {
-  // Generate HTML report
-  const htmlReport = generateHTMLReport(benchmarkData);
-  fs.writeFileSync(path.join(__dirname, 'benchmark-report.html'), htmlReport);
-  console.log('\n✅ Generated benchmark-report.html');
-  
-  // Generate Markdown report
-  const markdownReport = generateMarkdownReport(benchmarkData);
-  fs.writeFileSync(path.join(__dirname, 'benchmarks.md'), markdownReport);
-  console.log('✅ Generated benchmarks.md');
-  
-  console.log('\n📊 Benchmark analysis complete!');
-  console.log('📁 Check the generated files for detailed reports.');
-  console.log('\n💡 To run benchmarks on your own sprites:');
-  console.log('   1. cd benchmarks');
-  console.log('   2. node benchmark-analyzer.js');
-  console.log('   3. Edit TARGET_SPRITE variable to test different sprites');
-} else {
-  console.log('\n❌ Failed to generate benchmark reports');
+async function main() {
+  try {
+    const benchmarkData = await generateBenchmarkReport();
+    
+    if (benchmarkData) {
+      // Generate HTML report
+      const htmlReport = generateHTMLReport(benchmarkData);
+      fs.writeFileSync(path.join(__dirname, 'benchmark-report.html'), htmlReport);
+      console.log('\n✅ Generated benchmark-report.html');
+      
+      // Generate Markdown report
+      const markdownReport = generateMarkdownReport(benchmarkData);
+      fs.writeFileSync(path.join(__dirname, 'benchmarks.md'), markdownReport);
+      console.log('✅ Generated benchmarks.md');
+      
+      console.log('\n📊 Benchmark analysis complete!');
+      console.log('📁 Check the generated files for detailed reports.');
+      console.log('\n💡 To run benchmarks on your own sprites:');
+      console.log('   1. cd benchmarks');
+      console.log('   2. node benchmark-analyzer.js');
+      console.log('   3. Edit TARGET_SPRITE variable to test different sprites');
+    } else {
+      console.log('\n❌ Failed to generate benchmark reports');
+    }
+  } catch (error) {
+    console.error('\n❌ Error running benchmark:', error.message);
+    process.exit(1);
+  }
 }
+
+// Run the main function
+main();
