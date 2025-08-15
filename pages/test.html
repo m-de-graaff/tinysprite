@@ -210,11 +210,11 @@
                 </div>
                 <div class="info-item">
                     <div class="info-label">Default Width</div>
-                    <div class="info-value" id="currentWidth">13</div>
+                    <div class="info-value" id="currentWidth">5</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Default Height</div>
-                    <div class="info-value" id="currentHeight">9</div>
+                    <div class="info-value" id="currentHeight">5</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Expected Pixels</div>
@@ -229,11 +229,11 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                     <div>
                         <label for="tileWidthInput"><strong>Tile Width:</strong></label>
-                        <input id="tileWidthInput" type="number" min="1" max="100" value="13" style="width: 100%; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
+                        <input id="tileWidthInput" type="number" min="1" max="100" value="5" style="width: 100%; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
                     </div>
                     <div>
                         <label for="tileHeightInput"><strong>Tile Height:</strong></label>
-                        <input id="tileHeightInput" type="number" min="1" max="100" value="9" style="width: 100%; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
+                        <input id="tileHeightInput" type="number" min="1" max="100" value="5" style="width: 100%; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace;" />
                     </div>
                 </div>
             </div>
@@ -305,8 +305,8 @@
         const DEFAULT_TEST_STRING = "|1f00!AQACEAADAQEBEBAQ"
         
         let TEST_STRING = DEFAULT_TEST_STRING;
-        let TEST_WIDTH = 13;
-        let TEST_HEIGHT = 9;
+        let TEST_WIDTH = 5;
+        let TEST_HEIGHT = 5;
         let testResults = {};
         
         // Initialize
@@ -491,7 +491,7 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 // Draw at different scales
-                const scales = [1, 2, 4, 8];
+                const scales = [1, 2, 4, 8, 16];
                 let x = 0;
                 
                 for (const scale of scales) {
@@ -507,7 +507,7 @@
                     <div class="info-grid">
                         <div class="info-item">
                             <div class="info-label">Scales Tested</div>
-                            <div class="info-value">1x, 2x, 4x, 8x</div>
+                            <div class="info-value">1x, 2x, 4x, 8x, 16x</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Position</div>
