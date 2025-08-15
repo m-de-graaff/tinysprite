@@ -34,13 +34,18 @@
       <div class="grid">
         <div>
           <label for="packedInput"><strong>Packed Code</strong></label>
-          <input id="packedInput" style="width:100%;margin:6px 0 10px;padding:10px;border:2px solid #e3e7ef;border-radius:8px;font-family:ui-monospace,Menlo,Consolas,monospace" placeholder="e.g. dx9|000.444.fd0.fff|..." />
+          <input id="packedInput" style="width:100%;margin:6px 0 10px;padding:10px;border:2px solid #e3e7ef;border-radius:8px;font-family:ui-monospace,Menlo,Consolas,monospace" placeholder="e.g. 1|11f0011" />
           <div>
             <button class="btn" onclick="decodeAndDisplay()">🚀 Decode & Display</button>
             <button class="btn secondary" onclick="clearCanvas()">🗑️ Clear</button>
           </div>
+          <div style="margin-top:10px">
+            <label>Default W <input id="defW" type="number" value="16" style="width:60px"></label>
+            <label>Default H <input id="defH" type="number" value="16" style="width:60px"></label>
+          </div>
+          <div style="margin-top:6px"><input type="file" id="runtimeUpload" accept=".js"></div>
           <div id="status" class="status" style="display:none"></div>
-          <div style="margin-top:12px"><small>Format: <code>[w36]x[h36]|[pal]|[order?][data]</code> — pal tokens have no <code>#</code>; data is base36 RLE or literal, with optional scan order char (e.g., Z).</small></div>
+          <div style="margin-top:12px"><small>Format: <code>[dims?]|[cnt][hex...][order?][data128]</code> — palette count followed by RGB triples; data is base128-encoded 4bpp indices with optional <code>Z</code> scan order.</small></div>
         </div>
         <div class="card" style="margin:0">
           <canvas id="mainCanvas" width="400" height="300"></canvas>
@@ -60,8 +65,23 @@
     let currentSprite=null, spriteLibrary=[];
     document.addEventListener('DOMContentLoaded',()=>{
       loadSpriteLibrary();
-      document.getElementById('packedInput').addEventListener('keypress',e=>{ if(e.key==='Enter') decodeAndDisplay();});
-      const code=new URLSearchParams(location.search).get('code'); if(code){ document.getElementById('packedInput').value=code; decodeAndDisplay(); }
+      const inp=document.getElementById('packedInput');
+      inp.addEventListener('keypress',e=>{ if(e.key==='Enter') decodeAndDisplay();});
+      document.getElementById('defW').value=TinySprites.defaultW;
+      document.getElementById('defH').value=TinySprites.defaultH;
+      document.getElementById('defW').addEventListener('change',e=>{ TinySprites.defaultW=+e.target.value||TinySprites.defaultW;});
+      document.getElementById('defH').addEventListener('change',e=>{ TinySprites.defaultH=+e.target.value||TinySprites.defaultH;});
+      document.getElementById('runtimeUpload').addEventListener('change',async e=>{
+        const f=e.target.files[0];
+        if(!f) return;
+        const txt=await f.text();
+        const s=document.createElement('script');
+        s.textContent=txt;
+        document.body.appendChild(s);
+        document.getElementById('defW').value=TinySprites.defaultW;
+        document.getElementById('defH').value=TinySprites.defaultH;
+      });
+      const code=new URLSearchParams(location.search).get('code'); if(code){ inp.value=code; decodeAndDisplay(); }
     });
 
     function decodeAndDisplay(){
@@ -127,14 +147,6 @@
       "category": "animals",
       "author": "m-de-graaff",
       "packedCode": "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T"
-    },
-    {
-        "id": "diamond-13x12",
-        "name": "Diamond",
-        "description": "A diamond sprite",
-        "category": "shapes",
-        "author": "m-de-graaff",
-        "packedCode": "cxd|033.fff.088.0df|TTTTAAAATTTTTTTABBBBATTTTTABDDDBDATTTABDDDBDDATTTABDBBBBDDATABDBDDDDCDATABDBDDDDCDDAABBCDDDDCCCAABDDCCCCDDDATADCDDDDCDATTADCDDDDCDATTTACDDDDCATTTTTAAAAAATTT"
     }
   ],
   "categories": [
