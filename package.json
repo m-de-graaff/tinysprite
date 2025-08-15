@@ -4,7 +4,8 @@
   "description": "A lightweight sprite library",
   "main": "tinysprites.js",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "build-demo": "node build-demo.js"
   },
   "devDependencies": {
     "terser": "^5.28.1"

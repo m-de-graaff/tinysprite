@@ -17,15 +17,7 @@
         "category": "shapes",
         "author": "m-de-graaff",
         "packedCode": "cxd|033.fff.088.0df|TTTTAAAATTTTTTTABBBBATTTTTABDDDBDATTTABDDDBDDATTTABDBBBBDDATABDBDDDDCDATABDBDDDDCDDAABBCDDDDCCCAABDDCCCCDDDATADCDDDDCDATTADCDDDDCDATTTACDDDDCATTTTTAAAAAATTT"
-    },
-    {
-        "id": "heart-9x9",
-        "name": "Heart",
-        "description": "Pixel heart shape",
-        "category": "shapes",
-        "author": "m-de-graaff",
-        "packedCode": "9x9|f00|TTATTATTAT3A1T1A1TT2A3A2T2A4A3TA6A3TA6A3T2A4A3TT2A3A2TT1A1T1A1TTATTATT"
-      }
+    }
   ],
   "categories": [
     "animals"
