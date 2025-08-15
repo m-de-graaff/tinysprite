@@ -1,5 +1,5 @@
 /*!
- * TinySprites v2.1.0 — tiny runtime (no editor)
+ * TinySprites v2.1.1 — tiny runtime (no editor)
  * MIT License
  *
  * Packed format:
@@ -46,36 +46,40 @@
       const data=new Uint8Array(w*h); if(fillIndex)data.fill(fillIndex);
       return{w,h,data,palette:makePalette(paletteHex)};
     }
+
+    const toRGB3=t=>{
+        t=(t[0]==='#'?t.slice(1):t).toLowerCase();
+        if(t.length===6){
+          const q=n=>Math.max(0,Math.min(15,Math.round(parseInt(n,16)/17))).toString(16);
+          return q(t.slice(0,2))+q(t.slice(2,4))+q(t.slice(4,6));
+        }
+        return t.slice(0,3);
+      };
   
-    // rawMode=true => literal symbols (TTT…); false (default) => base36 RLE (5T)
-    function encodePacked(sprite,paletteHex,rawMode){
-      const {w,h,data}=sprite;
-      let palStr=''; if(paletteHex&&paletteHex.length){
-        const cleaned=[];
-        for(let t of paletteHex){
-          t=t[0]==='#'?t.slice(1):t;
-          if(t.length===6){
-            const q=n=>Math.max(0,Math.min(15,Math.round(parseInt(n,16)/17))).toString(16);
-            t=q(t.slice(0,2))+q(t.slice(2,4))+q(t.slice(4,6));
+      // rawMode=true => literal symbols (TTT…); false (default) => base36 RLE (5T)
+      function encodePacked(sprite,paletteHex,rawMode){
+        const {w,h,data}=sprite;
+        let palStr=''; if(paletteHex&&paletteHex.length){
+          palStr=paletteHex.map(toRGB3).join('.');
+        }
+        let end=data.length;
+        while(end>0&&data[end-1]===0)end--; // trim trailing transparent
+        let rle='';
+        if(rawMode){
+          for(let i=0;i<end;i++) rle+=indexToSym(data[i]);
+        }else{
+          if(end>0){
+            let runSym=data[0],runLen=1;
+            for(let i=1;i<end;i++){
+              const v=data[i];
+              if(v===runSym) runLen++;
+              else{ rle+=b36(runLen)+indexToSym(runSym); runSym=v; runLen=1; }
+            }
+            if(runSym!==0) rle+=b36(runLen)+indexToSym(runSym);
           }
-          cleaned.push(t.slice(0,3).toLowerCase());
         }
-        palStr=cleaned.join('.');
+        return b36(w)+'x'+b36(h)+'|'+palStr+'|'+rle;
       }
-      let rle='';
-      if(rawMode){
-        for(let v of data) rle+=indexToSym(v);
-      }else{
-        let runSym=data[0],runLen=1;
-        for(let i=1;i<data.length;i++){
-          const v=data[i];
-          if(v===runSym) runLen++;
-          else{ rle+=b36(runLen)+indexToSym(runSym); runSym=v; runLen=1; }
-        }
-        rle+=b36(runLen)+indexToSym(runSym);
-      }
-      return b36(w)+'x'+b36(h)+'|'+palStr+'|'+rle;
-    }
 
     function encodeWithBestOrder(sprite,paletteHex,rawMode=false){
       const orders=[{id:'',map:null},{id:'Z',map:zigzagMap(sprite.w,sprite.h)}];

@@ -9,14 +9,6 @@
       "category": "animals",
       "author": "m-de-graaff",
       "packedCode": "dx9|000.444.fd0.fff|5T2A3T1A7T1A1B3A1B3T1A2T7A1T2A4T2A1C2A1C1A1T1A3T7A1T2A5T4D4T1A3T2A3D5T6A1D1A5T4A1D3A1D2T"
-    },
-    {
-        "id": "diamond-13x12",
-        "name": "Diamond",
-        "description": "A diamond sprite",
-        "category": "shapes",
-        "author": "m-de-graaff",
-        "packedCode": "cxd|033.fff.088.0df|TTTTAAAATTTTTTTABBBBATTTTTABDDDBDATTTABDDDBDDATTTABDBBBBDDATABDBDDDDCDATABDBDDDDCDDAABBCDDDDCCCAABDDCCCCDDDATADCDDDDCDATTADCDDDDCDATTTACDDDDCATTTTTAAAAAATTT"
     }
   ],
   "categories": [

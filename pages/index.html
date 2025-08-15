@@ -32,12 +32,15 @@
       conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/20px 20px}
     .pill{background:#0b0f19;border:1px solid #1e2436;border-radius:999px;padding:3px 8px;font-size:12px;color:#cbd3e1}
     .status{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-    .pal{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-height:500px;overflow:auto;padding-right:12px}
-    .chip{display:flex;flex-direction:column;gap:12px;align-items:center;border:1px solid #1f2538;border-radius:16px;padding:16px;background:var(--chip);min-width:160px}
-    .sw{width:48px;height:48px;border:3px solid #1e2436;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1);cursor:pointer;transition:all 0.2s ease}
+    .pal{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:6px;max-height:350px;overflow:auto;padding-right:12px}
+    .pal{background:rgba(0,0,0,0.1);border-radius:16px;padding:16px;margin:8px 0}
+    .pal .chip{transition:all 0.2s ease}
+    .chip{display:flex;flex-direction:column;gap:6px;align-items:center;border:1px solid #1f2538;border-radius:10px;padding:8px;background:var(--chip);min-width:48px}
+    .sw{width:36px;height:36px;border:2px solid #1e2436;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1);cursor:pointer;transition:all 0.2s ease}
     .sw:hover{border-color:#2b3458;transform:scale(1.05)}
-    .sw.selected{border-color:var(--acc);box-shadow:0 0 0 2px rgba(120,220,250,0.3)}
-    .pal .chip:hover{background:#0d1119;border-color:#2b3458;transform:translateY(-2px);transition:all 0.2s ease}
+    .sw.selected{border-color:var(--acc);box-shadow:0 0 0 2px rgba(120,220,250,0.3), 0 0 8px rgba(120,220,250,0.2)}
+    .sw:active{transform:scale(0.95)}
+    .pal .chip:hover{background:rgba(255,255,255,0.05);border-color:#2b3458}
     .pal .chip .btn:hover{transform:scale(1.05)}
     .pal .chip input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(120,220,250,0.3)}
     .pal .chip{transition:all 0.2s ease}
@@ -85,7 +88,7 @@
         <button class="btn warn" id="clear">Clear</button>
       </div>
 
-      <h2 style="margin-top:10px">Palette <span style="color:var(--muted);font-size:12px">(T transparent)</span></h2>
+      <h2 style="margin-top:10px">Palette</h2>
       <div id="palette" class="pal"></div>
       <div class="row" style="margin-top:16px;gap:12px;align-items:center">
         <div style="position:relative;display:flex;align-items:center;gap:12px">
@@ -153,7 +156,7 @@
     </section>
   </div>
 
-  <script src="./tinysprites.min.js"></script>
+  <script src="tinysprites.min.js"></script>
   <script>
   // ===== helpers =====
   const $=s=>document.querySelector(s), cap=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
@@ -199,12 +202,24 @@
     tSw.className='sw'; 
     tSw.style.background='conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/12px 12px';
     tSw.style.cursor='pointer';
+    tSw.title='Transparent (T)'; // Show it's transparent
     if(activeIndex===0) tSw.classList.add('selected');
     tSw.onclick=()=>{activeIndex=0; updateStatus(); rebuildPaletteUI();};
     t.appendChild(tSw);
     
-    const tLabel=document.createElement('div'); tLabel.textContent='Transparent'; tLabel.style.fontSize='14px'; tLabel.style.color='var(--muted)'; tLabel.style.fontWeight='500';
-    t.appendChild(tLabel);
+    // Add keyboard shortcut indicator for transparent
+    const tShortcut = document.createElement('div');
+    tShortcut.textContent = 'T';
+    tShortcut.style.fontSize = '11px';
+    tShortcut.style.color = '#8b9bb4';
+    tShortcut.style.fontWeight = '600';
+    tShortcut.style.marginTop = '2px';
+    tShortcut.style.fontFamily = 'ui-monospace, monospace';
+    tShortcut.style.padding = '2px 4px';
+    tShortcut.style.background = 'rgba(139, 155, 180, 0.1)';
+    tShortcut.style.borderRadius = '4px';
+    t.appendChild(tShortcut);
+    
     el.appendChild(t);
     
     if (paletteHex.length === 0) {
@@ -224,43 +239,24 @@
         sw.className='sw'; 
         sw.style.background=hex; 
         sw.style.cursor='pointer';
+        sw.title=`${hex} (${String.fromCharCode(65+i)})`; // Show hex and keyboard shortcut
         if(activeIndex===i+1) sw.classList.add('selected');
         sw.onclick=()=>{activeIndex=i+1; updateStatus(); rebuildPaletteUI();};
         chip.appendChild(sw);
         
-        const inp=document.createElement('input'); 
-        inp.type='text'; 
-        inp.className='mono'; 
-        inp.value=hex; 
-        inp.maxLength=7; 
-        inp.style.width='120px'; 
-        inp.style.textAlign='center';
-        inp.style.fontSize='14px';
-        inp.style.padding='8px 10px';
-        inp.style.borderRadius='8px';
-        inp.style.border='2px solid #202641';
-        inp.style.background='#0b0f1a';
-        inp.style.color='var(--ink)';
+        // Add keyboard shortcut indicator
+        const shortcut = document.createElement('div');
+        shortcut.textContent = String.fromCharCode(65+i);
+        shortcut.style.fontSize = '11px';
+        shortcut.style.color = '#8b9bb4';
+        shortcut.style.fontWeight = '600';
+        shortcut.style.marginTop = '2px';
+        shortcut.style.fontFamily = 'ui-monospace, monospace';
+        shortcut.style.padding = '2px 4px';
+        shortcut.style.background = 'rgba(139, 155, 180, 0.1)';
+        shortcut.style.borderRadius = '4px';
+        chip.appendChild(shortcut);
         
-        const btn=document.createElement('button'); 
-        btn.className='btn'; 
-        btn.textContent=String.fromCharCode(65+i); 
-        btn.style.fontWeight='bold'; 
-        btn.style.minWidth='44px';
-        btn.style.height='36px';
-        btn.style.fontSize='16px';
-        if(activeIndex===i+1) btn.classList.add('acc');
-        btn.onclick=()=>{activeIndex=i+1; updateStatus(); rebuildPaletteUI();};
-        
-        inp.onchange=e=>{
-          let v=e.target.value.trim().toLowerCase(); if(!v.startsWith('#')) v='#'+v;
-          if(/^#[0-9a-f]{6}$/.test(v)) try{ v=hex6to3(v);}catch(_){ }
-          if(!/^#[0-9a-f]{3}$/.test(v)){ alert('Use #RGB or #RRGGBB'); inp.value=paletteHex[i]; return; }
-          paletteHex[i]=v; sprite.palette=TinySprites.makePalette(paletteHex); drawAll();
-        };
-        
-        chip.appendChild(inp); 
-        chip.appendChild(btn); 
         el.appendChild(chip);
       });
     }
@@ -407,9 +403,9 @@ AUTO → ${best.length} chars`;
   $('#loadPacked').onclick=()=>{ try{ const src=$('#io').value.trim(); const s=TinySprites.decodePacked(src); sprite=s; W=s.w; H=s.h; $('#w').value=W; $('#h').value=H; $('#fitw').value=W*10; $('#fith').value=H*10; const pal=(src.split('|')[1]||''); if(pal) paletteHex=pal.split(/[.,]/).filter(Boolean).map(t=>t[0]==='#'?t:'#'+t); sprite.palette=TinySprites.makePalette(paletteHex); activeIndex=paletteHex.length>0?1:0; drawAll(); }catch(e){ alert('Invalid packed string'); } };
 
   async function downloadRuntime(){
-    const candidates=['../tinysprites.min.js','../tinysprites.js'];
+    const candidates=['tinysprites.min.js','tinysprites.js'];
     for(const url of candidates){ try{ const res=await fetch(url); if(!res.ok) throw new Error('bad status'); const txt=await res.text(); const blob=new Blob([txt],{type:'application/javascript'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=url.split('/').pop(); document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); a.remove(); return; }catch(_){ } }
-    const a=document.createElement('a'); a.href='../tinysprites.min.js'; a.download='tinysprites.min.js'; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove();
+    const a=document.createElement('a'); a.href='tinysprites.min.js'; a.download='tinysprites.min.js'; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove();
   }
   $('#downloadLib').onclick=downloadRuntime;
 

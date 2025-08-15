@@ -24,7 +24,10 @@ function preprocessCode(code) {
 }
 
 const inputFile = path.resolve(__dirname, 'tinysprites.js');
-const outputFile = path.resolve(__dirname, 'tinysprites.min.js');
+const outputFiles = [
+    path.resolve(__dirname, 'tinysprites.min.js'),
+    path.resolve(__dirname, 'pages', 'tinysprites.min.js')
+  ];
 
 (async () => {
   try {
@@ -136,12 +139,17 @@ const outputFile = path.resolve(__dirname, 'tinysprites.min.js');
       process.exit(1);
     }
 
-    fs.writeFileSync(outputFile, result.code, 'utf8');
+    for (const file of outputFiles) {
+        fs.writeFileSync(file, result.code, 'utf8');
+      }
 
     const orig = Buffer.byteLength(src, 'utf8');
     const min = Buffer.byteLength(result.code, 'utf8');
 
-    console.log('Minified:', path.basename(inputFile), '->', path.basename(outputFile));
+    console.log('Minified:', path.basename(inputFile), '->');
+    for (const file of outputFiles) {
+      console.log('  ', path.relative(__dirname, file));
+    }
     console.log(`Size: ${orig} B -> ${min} B (${((1 - min / orig) * 100).toFixed(1)}% saved)`);
   } catch (err) {
     console.error(err);

@@ -40,7 +40,7 @@
             <button class="btn secondary" onclick="clearCanvas()">🗑️ Clear</button>
           </div>
           <div id="status" class="status" style="display:none"></div>
-          <<div style="margin-top:12px"><small>Format: <code>[w36]x[h36]|[pal]|[order?][data]</code> — pal tokens have no <code>#</code>; data is base36 RLE or literal, with optional scan order char (e.g., Z).</small></div>
+          <div style="margin-top:12px"><small>Format: <code>[w36]x[h36]|[pal]|[order?][data]</code> — pal tokens have no <code>#</code>; data is base36 RLE or literal, with optional scan order char (e.g., Z).</small></div>
         </div>
         <div class="card" style="margin:0">
           <canvas id="mainCanvas" width="400" height="300"></canvas>
@@ -55,7 +55,7 @@
     </div>
   </div>
 
-  <script src="./tinysprites.min.js"></script>
+  <script src="tinysprites.min.js"></script>
   <script>
     let currentSprite=null, spriteLibrary=[];
     document.addEventListener('DOMContentLoaded',()=>{
