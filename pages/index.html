@@ -32,6 +32,33 @@
                 border-bottom: 1px solid #000;
                 padding: 6px 12px;
                 font-weight: bold;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }
+            .menu {
+                position: relative;
+                cursor: pointer;
+            }
+            .menu .dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                background: #2d2f3e;
+                border: 1px solid #000;
+                border-radius: 8px;
+                padding: 6px 10px;
+                display: none;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .menu.open .dropdown {
+                display: flex;
+            }
+            .menu .dropdown label {
+                display: flex;
+                gap: 6px;
+                align-items: center;
             }
             .app {
                 display: grid;
@@ -266,7 +293,15 @@
         </style>
     </head>
     <body>
-        <header class="topbar">TinySprite Editor</header>
+        <header class="topbar">
+            <div class="menu" id="fileMenu">File ▾
+                <div class="dropdown">
+                    <label><input type="checkbox" id="optTilemap" /> Tilemap</label>
+                    <label><input type="checkbox" id="optAnim" /> Animations</label>
+                </div>
+            </div>
+            <div style="font-weight: bold;">TinySprite Editor</div>
+        </header>
         <div class="app">
             <!-- Left: Controls -->
             <section class="card">
@@ -358,19 +393,14 @@
             <section class="card" style="min-height: 0;">
                 <h2>Editor</h2>
                 <canvas id="stage" width="512" height="512"></canvas>
-                <h2 style="margin-top:10px;">Tilemap</h2>
-                <div class="row">
-                    <label>W <input id="mapW" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
-                    <label>H <input id="mapH" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
-                    <button class="btn" id="applyMap">Apply</button>
-                </div>
-                <canvas id="tilemap" width="256" height="256" style="margin-top:8px;"></canvas>
-                <div class="row" style="margin-top:8px;">
-                    <label>X1 <input id="rX1" type="number" value="0" style="width:40px;" /></label>
-                    <label>Y1 <input id="rY1" type="number" value="0" style="width:40px;" /></label>
-                    <label>X2 <input id="rX2" type="number" value="0" style="width:40px;" /></label>
-                    <label>Y2 <input id="rY2" type="number" value="0" style="width:40px;" /></label>
-                    <button class="btn" id="makeAnim">Load Anim</button>
+                <div id="tilemapWrap" style="display:none;">
+                    <h2 style="margin-top:10px;">Tilemap</h2>
+                    <div class="row">
+                        <label>W <input id="mapW" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
+                        <label>H <input id="mapH" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
+                        <button class="btn" id="applyMap">Apply</button>
+                    </div>
+                    <canvas id="tilemap" width="256" height="256" style="margin-top:8px;"></canvas>
                 </div>
             </section>
 
@@ -383,16 +413,18 @@
                 </div>
                 <canvas id="preview" width="160" height="160" style="margin-top: 8px;"></canvas>
                 <p style="color: var(--muted); font-size: 12px;">Nearest‑neighbor. Checkerboard = transparency.</p>
-                <h2 style="margin-top:10px;">Animation</h2>
-                <div class="row">
-                    <button class="btn" id="prevFrame">◀</button>
-                    <div id="frameLabel" class="pill">1/1</div>
-                    <button class="btn" id="nextFrame">▶</button>
-                </div>
-                <div class="row" style="margin-top:6px;">
-                    <button class="btn" id="addFrame">Add</button>
-                    <button class="btn warn" id="delFrame">Del</button>
-                    <button class="btn" id="playAnim">Play</button>
+                <div id="animWrap" style="display:none;">
+                    <h2 style="margin-top:10px;">Animation</h2>
+                    <div class="row">
+                        <button class="btn" id="prevFrame">◀</button>
+                        <div id="frameLabel" class="pill">1/1</div>
+                        <button class="btn" id="nextFrame">▶</button>
+                    </div>
+                    <div class="row" style="margin-top:6px;">
+                        <button class="btn" id="addFrame">Add</button>
+                        <button class="btn warn" id="delFrame">Del</button>
+                        <button class="btn" id="playAnim">Play</button>
+                    </div>
                 </div>
 
                 <h2 style="margin-top: 10px;">Data</h2>
@@ -575,6 +607,11 @@
                 pctx = prev.getContext("2d");
             const mapCanvas = $("#tilemap"),
                 mctx = mapCanvas.getContext("2d");
+            const tileWrap = $("#tilemapWrap"),
+                animWrap = $("#animWrap"),
+                optTile = $("#optTilemap"),
+                optAnim = $("#optAnim"),
+                fileMenu = $("#fileMenu");
 
             // ===== state =====
             let W = 16,
@@ -603,7 +640,8 @@
                 playTimer = null;
             let mapW = 8,
                 mapH = 8,
-                tilemap = TinySprites.loadTilemap(mapW, mapH, W, H);
+                tilemap = TinySprites.loadTilemap(mapW, mapH, W, H),
+                mapSel = null;
 
             // ===== undo =====
             function save() {
@@ -809,6 +847,16 @@
                         mctx.strokeStyle = "rgba(255,255,255,0.1)";
                         mctx.strokeRect(x * tw + 0.5, y * th + 0.5, tw, th);
                     }
+                if (mapSel) {
+                    const x1 = Math.min(mapSel.x1, mapSel.x2);
+                    const y1 = Math.min(mapSel.y1, mapSel.y2);
+                    const x2 = Math.max(mapSel.x1, mapSel.x2);
+                    const y2 = Math.max(mapSel.y1, mapSel.y2);
+                    mctx.strokeStyle = "var(--acc)";
+                    mctx.lineWidth = 2;
+                    mctx.strokeRect(x1 * tw + 1, y1 * th + 1, (x2 - x1 + 1) * tw - 2, (y2 - y1 + 1) * th - 2);
+                    mctx.lineWidth = 1;
+                }
             }
             function updateFrameLabel() {
                 $("#frameLabel").textContent = `${currentFrame + 1}/${frames.length}`;
@@ -862,6 +910,12 @@ AUTO → ${best.length} chars`;
                     y = Math.floor((gy - offY) / cell);
                 if (x < 0 || y < 0 || x >= W || y >= H) return null;
                 return { x, y };
+            }
+            function tileFromEvent(ev) {
+                const r = mapCanvas.getBoundingClientRect();
+                const x = Math.floor(((ev.clientX - r.left) / r.width) * mapW);
+                const y = Math.floor(((ev.clientY - r.top) / r.height) * mapH);
+                return { x: cap(x, 0, mapW - 1), y: cap(y, 0, mapH - 1) };
             }
             function setPixel(x, y, idx) {
                 const set = (xx, yy) => {
@@ -1111,28 +1165,62 @@ AUTO → ${best.length} chars`;
                 tilemap.dimensions.height = mapH;
                 drawTilemap();
             };
-            mapCanvas.addEventListener("click", (e) => {
-                const r = mapCanvas.getBoundingClientRect();
-                const x = Math.floor(((e.clientX - r.left) / r.width) * mapW);
-                const y = Math.floor(((e.clientY - r.top) / r.height) * mapH);
-                tilemap.set(x, y, frames[currentFrame]);
+            optTile.onchange = () => {
+                tileWrap.style.display = optTile.checked ? "" : "none";
+                drawTilemap();
+            };
+            optAnim.onchange = () => {
+                animWrap.style.display = optAnim.checked ? "" : "none";
+            };
+            fileMenu.onclick = (e) => {
+                if (e.target === fileMenu) fileMenu.classList.toggle("open");
+            };
+            document.addEventListener("click", (e) => {
+                if (!fileMenu.contains(e.target)) fileMenu.classList.remove("open");
+            });
+            mapCanvas.addEventListener("mousedown", (e) => {
+                const pos = tileFromEvent(e);
+                mapSel = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+            });
+            mapCanvas.addEventListener("mousemove", (e) => {
+                if (!mapSel) return;
+                const pos = tileFromEvent(e);
+                mapSel.x2 = pos.x;
+                mapSel.y2 = pos.y;
                 drawTilemap();
             });
-
-            $("#makeAnim").onclick = () => {
-                const x1 = cap(+$("#rX1").value, 0, mapW - 1);
-                const y1 = cap(+$("#rY1").value, 0, mapH - 1);
-                const x2 = cap(+$("#rX2").value, 0, mapW - 1);
-                const y2 = cap(+$("#rY2").value, 0, mapH - 1);
-                const anim = tilemap.loadAnimation(x1, y1, x2, y2);
-                if (anim.length) {
-                    frames = anim;
+            window.addEventListener("mouseup", () => {
+                if (!mapSel) return;
+                const { x1, y1, x2, y2 } = mapSel;
+                mapSel = null;
+                drawTilemap();
+                const sx = Math.min(x1, x2);
+                const sy = Math.min(y1, y2);
+                const ex = Math.max(x1, x2);
+                const ey = Math.max(y1, y2);
+                if (optAnim.checked && (sx !== ex || sy !== ey)) {
+                    const anim = tilemap.loadAnimation(sx, sy, ex, ey);
+                    if (anim.length) {
+                        frames = anim;
+                        currentFrame = 0;
+                        sprite = frames[0];
+                        animWrap.style.display = "";
+                        drawAll();
+                        updateFrameLabel();
+                    }
+                } else {
+                    let spr = tilemap.get(sx, sy);
+                    if (!spr) {
+                        spr = TinySprites.create(W, H, 0, paletteHex);
+                        tilemap.set(sx, sy, spr);
+                    }
+                    frames = [spr];
                     currentFrame = 0;
-                    sprite = frames[0];
+                    sprite = spr;
                     drawAll();
                     updateFrameLabel();
                 }
-            };
+            });
 
             $("#scale").oninput = drawPreview;
             $("#fitw").oninput = drawPreview;
