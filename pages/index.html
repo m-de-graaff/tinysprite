@@ -35,33 +35,33 @@
                 padding: 4px 8px;
                 font-weight: bold;
                 display: flex;
-                align-items: center;
                 gap: 12px;
             }
-            .menu {
-                position: relative;
+            .topbar span {
+                padding: 2px 6px;
+                border-radius: 3px;
                 cursor: pointer;
             }
-            .menu .dropdown {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                background: #d7d7d7;
-                color: #000;
+            .topbar span:hover {
+                background: #c4c4c4;
+            }
+            .tabs {
+                background: #c4c4c4;
+                border-bottom: 1px solid #000;
+                display: flex;
+            }
+            .tab {
+                padding: 4px 12px;
                 border: 1px solid #000;
-                border-radius: 4px;
-                padding: 4px 8px;
-                display: none;
-                flex-direction: column;
-                gap: 4px;
+                border-bottom: none;
+                background: #b0b0b0;
+                cursor: pointer;
             }
-            .menu.open .dropdown {
-                display: flex;
+            .tab + .tab {
+                margin-left: 2px;
             }
-            .menu .dropdown label {
-                display: flex;
-                gap: 4px;
-                align-items: center;
+            .tab.active {
+                background: #fff;
                 color: #000;
             }
             .app {
@@ -296,14 +296,20 @@
     </head>
     <body>
         <header class="topbar">
-            <div class="menu" id="fileMenu">File ▾
-                <div class="dropdown">
-                    <label><input type="checkbox" id="optTilemap" /> Tilemap</label>
-                    <label><input type="checkbox" id="optAnim" /> Animations</label>
-                </div>
-            </div>
-            <div style="font-weight: bold;">TinySprite Editor</div>
+            <span>File</span>
+            <span>Edit</span>
+            <span>Sprite</span>
+            <span>Layer</span>
+            <span>Frame</span>
+            <span>Select</span>
+            <span>View</span>
+            <span>Help</span>
         </header>
+        <nav class="tabs">
+            <div class="tab active" data-tab="sprite">SPRITE EDITOR</div>
+            <div class="tab" data-tab="tilemap">TILEMAP</div>
+            <div class="tab" data-tab="anim">ANIMATIONS</div>
+        </nav>
         <div class="app">
             <!-- Left: Controls -->
             <section class="card">
@@ -611,9 +617,7 @@
                 mctx = mapCanvas.getContext("2d");
             const tileWrap = $("#tilemapWrap"),
                 animWrap = $("#animWrap"),
-                optTile = $("#optTilemap"),
-                optAnim = $("#optAnim"),
-                fileMenu = $("#fileMenu");
+                tabs = document.querySelectorAll(".tab");
 
             // ===== state =====
             let W = 16,
@@ -1167,19 +1171,17 @@ AUTO → ${best.length} chars`;
                 tilemap.dimensions.height = mapH;
                 drawTilemap();
             };
-            optTile.onchange = () => {
-                tileWrap.style.display = optTile.checked ? "" : "none";
+            let currentTab = "sprite";
+            function setTab(t) {
+                currentTab = t;
+                tabs.forEach((el) => el.classList.toggle("active", el.dataset.tab === t));
+                grid.style.display = t === "tilemap" ? "none" : "";
+                tileWrap.style.display = t === "tilemap" ? "" : "none";
+                animWrap.style.display = t === "anim" ? "" : "none";
                 drawTilemap();
-            };
-            optAnim.onchange = () => {
-                animWrap.style.display = optAnim.checked ? "" : "none";
-            };
-            fileMenu.onclick = (e) => {
-                if (e.target === fileMenu) fileMenu.classList.toggle("open");
-            };
-            document.addEventListener("click", (e) => {
-                if (!fileMenu.contains(e.target)) fileMenu.classList.remove("open");
-            });
+            }
+            tabs.forEach((el) => el.addEventListener("click", () => setTab(el.dataset.tab)));
+            setTab("sprite");
             mapCanvas.addEventListener("mousedown", (e) => {
                 const pos = tileFromEvent(e);
                 mapSel = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
@@ -1200,13 +1202,13 @@ AUTO → ${best.length} chars`;
                 const sy = Math.min(y1, y2);
                 const ex = Math.max(x1, x2);
                 const ey = Math.max(y1, y2);
-                if (optAnim.checked && (sx !== ex || sy !== ey)) {
+                if (sx !== ex || sy !== ey) {
                     const anim = tilemap.loadAnimation(sx, sy, ex, ey);
                     if (anim.length) {
                         frames = anim;
                         currentFrame = 0;
                         sprite = frames[0];
-                        animWrap.style.display = "";
+                        setTab("anim");
                         drawAll();
                         updateFrameLabel();
                     }
@@ -1221,6 +1223,7 @@ AUTO → ${best.length} chars`;
                     sprite = spr;
                     drawAll();
                     updateFrameLabel();
+                    setTab("sprite");
                 }
             });
 
