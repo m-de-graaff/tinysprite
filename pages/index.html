@@ -6,13 +6,14 @@
         <title>TinySprites — Rebuilt Editor</title>
         <style>
             :root {
-                --bg: #0d0f13;
-                --panel: #141824;
-                --muted: #9aa3b2;
-                --ink: #e8eaf3;
-                --acc: #78dcfa;
-                --line: #22283a;
-                --chip: #0b0e17;
+                /* Aseprite-inspired greys */
+                --bg: #2d2f33;
+                --panel: #3a3d41;
+                --muted: #b3b7bd;
+                --ink: #f8f8f8;
+                --acc: #ffa300;
+                --line: #000;
+                --chip: #44474c;
                 --danger: #ff5b6b;
                 --ok: #2dd4bf;
             }
@@ -27,12 +28,48 @@
                 color: var(--ink);
                 font: 14px/1.45 system-ui, Segoe UI, Inter, Roboto, sans-serif;
             }
+            .topbar {
+                background: #d7d7d7;
+                color: #000;
+                border-bottom: 1px solid #000;
+                padding: 4px 8px;
+                font-weight: bold;
+                display: flex;
+                gap: 12px;
+            }
+            .topbar span {
+                padding: 2px 6px;
+                border-radius: 3px;
+                cursor: pointer;
+            }
+            .topbar span:hover {
+                background: #c4c4c4;
+            }
+            .tabs {
+                background: #c4c4c4;
+                border-bottom: 1px solid #000;
+                display: flex;
+            }
+            .tab {
+                padding: 4px 12px;
+                border: 1px solid #000;
+                border-bottom: none;
+                background: #b0b0b0;
+                cursor: pointer;
+            }
+            .tab + .tab {
+                margin-left: 2px;
+            }
+            .tab.active {
+                background: #fff;
+                color: #000;
+            }
             .app {
                 display: grid;
                 grid-template-columns: 400px 1fr 320px;
                 gap: 12px;
                 padding: 12px;
-                height: 100%;
+                height: calc(100% - 40px);
             }
             @media (max-width: 1200px) {
                 .app {
@@ -42,8 +79,8 @@
             .card {
                 background: var(--panel);
                 border: 1px solid var(--line);
-                border-radius: 14px;
-                padding: 12px;
+                border-radius: 4px;
+                padding: 8px;
                 min-height: 0;
                 display: flex;
                 flex-direction: column;
@@ -59,28 +96,28 @@
                 flex-wrap: wrap;
             }
             .btn {
-                background: #0e1220;
-                border: 1px solid #202641;
+                background: #4e5155;
+                border: 1px solid #000;
                 color: var(--ink);
-                padding: 6px 10px;
-                border-radius: 10px;
+                padding: 4px 8px;
+                border-radius: 4px;
                 cursor: pointer;
             }
             .btn:hover {
-                border-color: #2b3458;
+                background: #5a5e63;
             }
             .btn.acc {
                 background: var(--acc);
-                color: #00131c;
-                border-color: #54bfe2;
+                color: #000;
+                border-color: #b76c00;
             }
             .btn.warn {
-                background: #201017;
-                border-color: #5e2332;
+                background: #5a3238;
+                border-color: #000;
             }
             .btn.ghost {
                 background: transparent;
-                border-color: #2a3248;
+                border-color: #000;
             }
             label {
                 color: var(--muted);
@@ -88,46 +125,52 @@
             input[type="number"],
             input[type="text"],
             select {
-                background: #0b0f1a;
+                background: #2d2f33;
                 color: var(--ink);
-                border: 1px solid #202641;
-                border-radius: 8px;
-                padding: 6px 8px;
+                border: 1px solid #000;
+                border-radius: 4px;
+                padding: 4px 6px;
             }
             input.mono {
                 font-family: ui-monospace, Menlo, Consolas, monospace;
             }
             textarea {
-                background: #0a0f1b;
+                background: #2d2f33;
                 color: var(--ink);
-                border: 1px solid #202641;
-                border-radius: 10px;
-                padding: 8px;
+                border: 1px solid #000;
+                border-radius: 4px;
+                padding: 6px;
                 width: 100%;
                 height: 100px;
             }
             .tools {
                 display: grid;
                 grid-template-columns: repeat(7, 1fr);
-                gap: 6px;
+                gap: 4px;
             }
             .tools .btn {
-                padding: 6px 0;
+                padding: 4px 0;
                 text-align: center;
             }
             #stage {
                 width: 100%;
                 aspect-ratio: 1/1;
-                background: #0f1422;
+                background: #2d2f33;
                 border: 1px solid var(--line);
-                border-radius: 12px;
+                border-radius: 4px;
                 image-rendering: pixelated;
             }
             #preview {
                 image-rendering: pixelated;
                 border: 1px solid var(--line);
-                border-radius: 12px;
-                background: conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/20px 20px;
+                border-radius: 4px;
+                background: conic-gradient(#313338 0 25%, #2b2d31 0 50%, #313338 0 75%, #2b2d31 0) 0 0/20px 20px;
+            }
+            #tilemap {
+                image-rendering: pixelated;
+                border: 1px solid var(--line);
+                border-radius: 4px;
+                background: #2d2f33;
             }
             .pill {
                 background: #0b0f19;
@@ -150,10 +193,8 @@
                 max-height: 350px;
                 overflow: auto;
                 padding-right: 12px;
-            }
-            .pal {
                 background: rgba(0, 0, 0, 0.1);
-                border-radius: 16px;
+                border-radius: 4px;
                 padding: 16px;
                 margin: 8px 0;
             }
@@ -165,8 +206,8 @@
                 flex-direction: column;
                 gap: 6px;
                 align-items: center;
-                border: 1px solid #1f2538;
-                border-radius: 10px;
+                border: 1px solid #000;
+                border-radius: 4px;
                 padding: 8px;
                 background: var(--chip);
                 min-width: 48px;
@@ -174,19 +215,19 @@
             .sw {
                 width: 36px;
                 height: 36px;
-                border: 2px solid #1e2436;
-                border-radius: 6px;
-                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+                border: 2px solid #000;
+                border-radius: 0;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
                 cursor: pointer;
                 transition: all 0.2s ease;
             }
             .sw:hover {
-                border-color: #2b3458;
+                border-color: var(--acc);
                 transform: scale(1.05);
             }
             .sw.selected {
                 border-color: var(--acc);
-                box-shadow: 0 0 0 2px rgba(120, 220, 250, 0.3), 0 0 8px rgba(120, 220, 250, 0.2);
+                box-shadow: 0 0 0 2px rgba(255, 163, 0, 0.4), 0 0 8px rgba(255, 163, 0, 0.3);
             }
             .sw:active {
                 transform: scale(0.95);
@@ -254,6 +295,21 @@
         </style>
     </head>
     <body>
+        <header class="topbar">
+            <span>File</span>
+            <span>Edit</span>
+            <span>Sprite</span>
+            <span>Layer</span>
+            <span>Frame</span>
+            <span>Select</span>
+            <span>View</span>
+            <span>Help</span>
+        </header>
+        <nav class="tabs">
+            <div class="tab active" data-tab="sprite">SPRITE EDITOR</div>
+            <div class="tab" data-tab="tilemap">TILEMAP</div>
+            <div class="tab" data-tab="anim">ANIMATIONS</div>
+        </nav>
         <div class="app">
             <!-- Left: Controls -->
             <section class="card">
@@ -345,6 +401,15 @@
             <section class="card" style="min-height: 0;">
                 <h2>Editor</h2>
                 <canvas id="stage" width="512" height="512"></canvas>
+                <div id="tilemapWrap" style="display:none;">
+                    <h2 style="margin-top:10px;">Tilemap</h2>
+                    <div class="row">
+                        <label>W <input id="mapW" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
+                        <label>H <input id="mapH" type="number" min="1" max="32" value="8" style="width:80px;" /></label>
+                        <button class="btn" id="applyMap">Apply</button>
+                    </div>
+                    <canvas id="tilemap" width="256" height="256" style="margin-top:8px;"></canvas>
+                </div>
             </section>
 
             <!-- Right: Preview & Stats -->
@@ -356,6 +421,19 @@
                 </div>
                 <canvas id="preview" width="160" height="160" style="margin-top: 8px;"></canvas>
                 <p style="color: var(--muted); font-size: 12px;">Nearest‑neighbor. Checkerboard = transparency.</p>
+                <div id="animWrap" style="display:none;">
+                    <h2 style="margin-top:10px;">Animation</h2>
+                    <div class="row">
+                        <button class="btn" id="prevFrame">◀</button>
+                        <div id="frameLabel" class="pill">1/1</div>
+                        <button class="btn" id="nextFrame">▶</button>
+                    </div>
+                    <div class="row" style="margin-top:6px;">
+                        <button class="btn" id="addFrame">Add</button>
+                        <button class="btn warn" id="delFrame">Del</button>
+                        <button class="btn" id="playAnim">Play</button>
+                    </div>
+                </div>
 
                 <h2 style="margin-top: 10px;">Data</h2>
                 <div id="stats" class="stat"></div>
@@ -535,6 +613,11 @@
                 gctx = grid.getContext("2d");
             const prev = $("#preview"),
                 pctx = prev.getContext("2d");
+            const mapCanvas = $("#tilemap"),
+                mctx = mapCanvas.getContext("2d");
+            const tileWrap = $("#tilemapWrap"),
+                animWrap = $("#animWrap"),
+                tabs = document.querySelectorAll(".tab");
 
             // ===== state =====
             let W = 16,
@@ -557,6 +640,14 @@
             let sprite = TinySprites.create(W, H, 0, []);
             TinySprites.defaultW = DEF_W;
             TinySprites.defaultH = DEF_H;
+            let frames = [sprite],
+                currentFrame = 0,
+                playing = false,
+                playTimer = null;
+            let mapW = 8,
+                mapH = 8,
+                tilemap = TinySprites.loadTilemap(mapW, mapH, W, H),
+                mapSel = null;
 
             // ===== undo =====
             function save() {
@@ -687,10 +778,14 @@
                 W = w | 0;
                 H = h | 0;
                 sprite = TinySprites.create(W, H, 0, paletteHex);
+                frames = [sprite];
+                currentFrame = 0;
+                updateFrameLabel();
                 activeIndex = paletteHex.length > 0 ? 1 : 0;
                 $("#fitw").value = W * 10;
                 $("#fith").value = H * 10;
                 drawAll();
+                drawTilemap();
             }
             function layout() {
                 const d = window.devicePixelRatio || 1,
@@ -744,6 +839,43 @@
                 prev.height = fh;
                 TinySprites.draw(pctx, sprite, 0, 0, { fit: { w: fw, h: fh } });
             }
+            function drawTilemap() {
+                const tw = mapCanvas.width / mapW,
+                    th = mapCanvas.height / mapH;
+                mctx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+                for (let y = 0; y < mapH; y++)
+                    for (let x = 0; x < mapW; x++) {
+                        const spr = tilemap.get(x, y);
+                        if (spr)
+                            TinySprites.draw(mctx, spr, x * tw, y * th, {
+                                fit: { w: tw, h: th },
+                            });
+                        mctx.strokeStyle = "rgba(255,255,255,0.1)";
+                        mctx.strokeRect(x * tw + 0.5, y * th + 0.5, tw, th);
+                    }
+                if (mapSel) {
+                    const x1 = Math.min(mapSel.x1, mapSel.x2);
+                    const y1 = Math.min(mapSel.y1, mapSel.y2);
+                    const x2 = Math.max(mapSel.x1, mapSel.x2);
+                    const y2 = Math.max(mapSel.y1, mapSel.y2);
+                    mctx.strokeStyle = "var(--acc)";
+                    mctx.lineWidth = 2;
+                    mctx.strokeRect(x1 * tw + 1, y1 * th + 1, (x2 - x1 + 1) * tw - 2, (y2 - y1 + 1) * th - 2);
+                    mctx.lineWidth = 1;
+                }
+            }
+            function updateFrameLabel() {
+                $("#frameLabel").textContent = `${currentFrame + 1}/${frames.length}`;
+            }
+            function switchFrame(i) {
+                if (i < 0 || i >= frames.length) return;
+                frames[currentFrame] = sprite;
+                currentFrame = i;
+                sprite = frames[currentFrame];
+                drawAll();
+                updateFrameLabel();
+                drawTilemap();
+            }
             function updateStats() {
                 const palTokens = paletteHex;
                 const rle = encodeWithBestOrder(sprite, palTokens, false);
@@ -771,6 +903,7 @@ AUTO → ${best.length} chars`;
                 updateStats();
                 updateStatus();
                 rebuildPaletteUI();
+                drawTilemap();
             }
 
             // ===== editor helpers =====
@@ -783,6 +916,12 @@ AUTO → ${best.length} chars`;
                     y = Math.floor((gy - offY) / cell);
                 if (x < 0 || y < 0 || x >= W || y >= H) return null;
                 return { x, y };
+            }
+            function tileFromEvent(ev) {
+                const r = mapCanvas.getBoundingClientRect();
+                const x = Math.floor(((ev.clientX - r.left) / r.width) * mapW);
+                const y = Math.floor(((ev.clientY - r.top) / r.height) * mapH);
+                return { x: cap(x, 0, mapW - 1), y: cap(y, 0, mapH - 1) };
             }
             function setPixel(x, y, idx) {
                 const set = (xx, yy) => {
@@ -1006,6 +1145,88 @@ AUTO → ${best.length} chars`;
                 drawAll();
             };
 
+            $("#addFrame").onclick = () => {
+                frames[currentFrame] = sprite;
+                frames.push(TinySprites.create(W, H, 0, paletteHex));
+                switchFrame(frames.length - 1);
+            };
+            $("#delFrame").onclick = () => {
+                if (frames.length > 1) {
+                    frames.splice(currentFrame, 1);
+                    switchFrame(Math.max(0, currentFrame - 1));
+                }
+            };
+            $("#prevFrame").onclick = () => switchFrame((currentFrame - 1 + frames.length) % frames.length);
+            $("#nextFrame").onclick = () => switchFrame((currentFrame + 1) % frames.length);
+            $("#playAnim").onclick = () => {
+                playing = !playing;
+                $("#playAnim").textContent = playing ? "Stop" : "Play";
+                if (playing) playTimer = setInterval(() => switchFrame((currentFrame + 1) % frames.length), 200);
+                else clearInterval(playTimer);
+            };
+            $("#applyMap").onclick = () => {
+                mapW = cap(+$("#mapW").value, 1, 32);
+                mapH = cap(+$("#mapH").value, 1, 32);
+                tilemap.dimensions.width = mapW;
+                tilemap.dimensions.height = mapH;
+                drawTilemap();
+            };
+            let currentTab = "sprite";
+            function setTab(t) {
+                currentTab = t;
+                tabs.forEach((el) => el.classList.toggle("active", el.dataset.tab === t));
+                grid.style.display = t === "tilemap" ? "none" : "";
+                tileWrap.style.display = t === "tilemap" ? "" : "none";
+                animWrap.style.display = t === "anim" ? "" : "none";
+                drawTilemap();
+            }
+            tabs.forEach((el) => el.addEventListener("click", () => setTab(el.dataset.tab)));
+            setTab("sprite");
+            mapCanvas.addEventListener("mousedown", (e) => {
+                const pos = tileFromEvent(e);
+                mapSel = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+            });
+            mapCanvas.addEventListener("mousemove", (e) => {
+                if (!mapSel) return;
+                const pos = tileFromEvent(e);
+                mapSel.x2 = pos.x;
+                mapSel.y2 = pos.y;
+                drawTilemap();
+            });
+            window.addEventListener("mouseup", () => {
+                if (!mapSel) return;
+                const { x1, y1, x2, y2 } = mapSel;
+                mapSel = null;
+                drawTilemap();
+                const sx = Math.min(x1, x2);
+                const sy = Math.min(y1, y2);
+                const ex = Math.max(x1, x2);
+                const ey = Math.max(y1, y2);
+                if (sx !== ex || sy !== ey) {
+                    const anim = tilemap.loadAnimation(sx, sy, ex, ey);
+                    if (anim.length) {
+                        frames = anim;
+                        currentFrame = 0;
+                        sprite = frames[0];
+                        setTab("anim");
+                        drawAll();
+                        updateFrameLabel();
+                    }
+                } else {
+                    let spr = tilemap.get(sx, sy);
+                    if (!spr) {
+                        spr = TinySprites.create(W, H, 0, paletteHex);
+                        tilemap.set(sx, sy, spr);
+                    }
+                    frames = [spr];
+                    currentFrame = 0;
+                    sprite = spr;
+                    drawAll();
+                    updateFrameLabel();
+                    setTab("sprite");
+                }
+            });
+
             $("#scale").oninput = drawPreview;
             $("#fitw").oninput = drawPreview;
             $("#fith").oninput = drawPreview;
@@ -1187,6 +1408,8 @@ AUTO → ${best.length} chars`;
             $("#fitw").value = W * 10;
             $("#fith").value = H * 10;
             drawAll();
+            drawTilemap();
+            updateFrameLabel();
         </script>
     </body>
 </html>

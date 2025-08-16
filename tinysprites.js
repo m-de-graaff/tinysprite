@@ -234,6 +234,71 @@ function draw(ctx, sprite, x = 0, y = 0, opts = {}) {
     ctx.drawImage(toCanvas(sprite, z), x | 0, y | 0);
 }
 
+function loadTilemap(mapW = 1, mapH = 1, tileW = 16, tileH = 16) {
+    let tiles = Array.from({ length: mapH }, () =>
+        Array.from({ length: mapW }, () => ({ sprite: null, w: tileW, h: tileH }))
+    );
+    const tm = {
+        tiles,
+        dimensions: {
+            get width() {
+                return mapW;
+            },
+            set width(v) {
+                mapW = v | 0;
+                tiles.forEach((r) => {
+                    r.length = mapW;
+                    for (let i = 0; i < mapW; i++) if (!r[i]) r[i] = { sprite: null, w: tileW, h: tileH };
+                });
+            },
+            get height() {
+                return mapH;
+            },
+            set height(v) {
+                mapH = v | 0;
+                tiles.length = mapH;
+                for (let y = 0; y < mapH; y++)
+                    if (!tiles[y]) tiles[y] = Array.from({ length: mapW }, () => ({ sprite: null, w: tileW, h: tileH }));
+            },
+        },
+        tile: {
+            get width() {
+                return tileW;
+            },
+            set width(v) {
+                tileW = v | 0;
+                tiles.flat().forEach((t) => (t.w = tileW));
+            },
+            get height() {
+                return tileH;
+            },
+            set height(v) {
+                tileH = v | 0;
+                tiles.flat().forEach((t) => (t.h = tileH));
+            },
+        },
+        set(x, y, spr) {
+            if (tiles[y] && tiles[y][x]) tiles[y][x].sprite = spr;
+        },
+        get(x, y) {
+            return tiles[y] && tiles[y][x] ? tiles[y][x].sprite : null;
+        },
+        cell(x, y) {
+            return tiles[y] && tiles[y][x];
+        },
+        loadAnimation(x1, y1, x2, y2) {
+            const frames = [];
+            for (let yy = y1; yy <= y2; yy++)
+                for (let xx = x1; xx <= x2; xx++) {
+                    const s = tm.get(xx, yy);
+                    if (s) frames.push(s);
+                }
+            return frames;
+        },
+    };
+    return tm;
+}
+
 const zigzagMap = (w, h) => {
     const m = new Uint32Array(w * h);
     let i = 0;
@@ -247,7 +312,7 @@ const zigzagMap = (w, h) => {
     return m;
 };
 
-const TinySprites = { defaultW: 16, defaultH: 16, create, makePalette, decodePacked, toImageData, toCanvas, toDataURL, toImage, toSvg, draw, fromImage, loadImage };
+const TinySprites = { defaultW: 16, defaultH: 16, create, makePalette, decodePacked, toImageData, toCanvas, toDataURL, toImage, toSvg, draw, fromImage, loadImage, "loadTilemap": loadTilemap };
 if (typeof window !== "undefined") window.TinySprites = TinySprites;
 if (typeof module !== "undefined" && module.exports) module.exports = TinySprites;
 })();
