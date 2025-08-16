@@ -6,13 +6,14 @@
         <title>TinySprites — Rebuilt Editor</title>
         <style>
             :root {
-                --bg: #0d0f13;
-                --panel: #141824;
-                --muted: #9aa3b2;
-                --ink: #e8eaf3;
-                --acc: #78dcfa;
-                --line: #22283a;
-                --chip: #0b0e17;
+                /* Aseprite-inspired greys */
+                --bg: #2d2f33;
+                --panel: #3a3d41;
+                --muted: #b3b7bd;
+                --ink: #f8f8f8;
+                --acc: #ffa300;
+                --line: #000;
+                --chip: #44474c;
                 --danger: #ff5b6b;
                 --ok: #2dd4bf;
             }
@@ -28,13 +29,14 @@
                 font: 14px/1.45 system-ui, Segoe UI, Inter, Roboto, sans-serif;
             }
             .topbar {
-                background: #2d2f3e;
+                background: #d7d7d7;
+                color: #000;
                 border-bottom: 1px solid #000;
-                padding: 6px 12px;
+                padding: 4px 8px;
                 font-weight: bold;
                 display: flex;
                 align-items: center;
-                gap: 16px;
+                gap: 12px;
             }
             .menu {
                 position: relative;
@@ -44,21 +46,23 @@
                 position: absolute;
                 top: 100%;
                 left: 0;
-                background: #2d2f3e;
+                background: #d7d7d7;
+                color: #000;
                 border: 1px solid #000;
-                border-radius: 8px;
-                padding: 6px 10px;
+                border-radius: 4px;
+                padding: 4px 8px;
                 display: none;
                 flex-direction: column;
-                gap: 6px;
+                gap: 4px;
             }
             .menu.open .dropdown {
                 display: flex;
             }
             .menu .dropdown label {
                 display: flex;
-                gap: 6px;
+                gap: 4px;
                 align-items: center;
+                color: #000;
             }
             .app {
                 display: grid;
@@ -75,8 +79,8 @@
             .card {
                 background: var(--panel);
                 border: 1px solid var(--line);
-                border-radius: 14px;
-                padding: 12px;
+                border-radius: 4px;
+                padding: 8px;
                 min-height: 0;
                 display: flex;
                 flex-direction: column;
@@ -92,28 +96,28 @@
                 flex-wrap: wrap;
             }
             .btn {
-                background: #0e1220;
-                border: 1px solid #202641;
+                background: #4e5155;
+                border: 1px solid #000;
                 color: var(--ink);
-                padding: 6px 10px;
-                border-radius: 10px;
+                padding: 4px 8px;
+                border-radius: 4px;
                 cursor: pointer;
             }
             .btn:hover {
-                border-color: #2b3458;
+                background: #5a5e63;
             }
             .btn.acc {
                 background: var(--acc);
-                color: #00131c;
-                border-color: #54bfe2;
+                color: #000;
+                border-color: #b76c00;
             }
             .btn.warn {
-                background: #201017;
-                border-color: #5e2332;
+                background: #5a3238;
+                border-color: #000;
             }
             .btn.ghost {
                 background: transparent;
-                border-color: #2a3248;
+                border-color: #000;
             }
             label {
                 color: var(--muted);
@@ -121,52 +125,52 @@
             input[type="number"],
             input[type="text"],
             select {
-                background: #0b0f1a;
+                background: #2d2f33;
                 color: var(--ink);
-                border: 1px solid #202641;
-                border-radius: 8px;
-                padding: 6px 8px;
+                border: 1px solid #000;
+                border-radius: 4px;
+                padding: 4px 6px;
             }
             input.mono {
                 font-family: ui-monospace, Menlo, Consolas, monospace;
             }
             textarea {
-                background: #0a0f1b;
+                background: #2d2f33;
                 color: var(--ink);
-                border: 1px solid #202641;
-                border-radius: 10px;
-                padding: 8px;
+                border: 1px solid #000;
+                border-radius: 4px;
+                padding: 6px;
                 width: 100%;
                 height: 100px;
             }
             .tools {
                 display: grid;
                 grid-template-columns: repeat(7, 1fr);
-                gap: 6px;
+                gap: 4px;
             }
             .tools .btn {
-                padding: 6px 0;
+                padding: 4px 0;
                 text-align: center;
             }
             #stage {
                 width: 100%;
                 aspect-ratio: 1/1;
-                background: #0f1422;
+                background: #2d2f33;
                 border: 1px solid var(--line);
-                border-radius: 12px;
+                border-radius: 4px;
                 image-rendering: pixelated;
             }
             #preview {
                 image-rendering: pixelated;
                 border: 1px solid var(--line);
-                border-radius: 12px;
-                background: conic-gradient(#1a2032 0 25%, #141a29 0 50%, #1a2032 0 75%, #141a29 0) 0 0/20px 20px;
+                border-radius: 4px;
+                background: conic-gradient(#313338 0 25%, #2b2d31 0 50%, #313338 0 75%, #2b2d31 0) 0 0/20px 20px;
             }
             #tilemap {
                 image-rendering: pixelated;
                 border: 1px solid var(--line);
-                border-radius: 12px;
-                background: #0f1422;
+                border-radius: 4px;
+                background: #2d2f33;
             }
             .pill {
                 background: #0b0f19;
@@ -189,10 +193,8 @@
                 max-height: 350px;
                 overflow: auto;
                 padding-right: 12px;
-            }
-            .pal {
                 background: rgba(0, 0, 0, 0.1);
-                border-radius: 16px;
+                border-radius: 4px;
                 padding: 16px;
                 margin: 8px 0;
             }
@@ -204,8 +206,8 @@
                 flex-direction: column;
                 gap: 6px;
                 align-items: center;
-                border: 1px solid #1f2538;
-                border-radius: 10px;
+                border: 1px solid #000;
+                border-radius: 4px;
                 padding: 8px;
                 background: var(--chip);
                 min-width: 48px;
@@ -213,19 +215,19 @@
             .sw {
                 width: 36px;
                 height: 36px;
-                border: 2px solid #1e2436;
-                border-radius: 6px;
-                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+                border: 2px solid #000;
+                border-radius: 0;
+                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
                 cursor: pointer;
                 transition: all 0.2s ease;
             }
             .sw:hover {
-                border-color: #2b3458;
+                border-color: var(--acc);
                 transform: scale(1.05);
             }
             .sw.selected {
                 border-color: var(--acc);
-                box-shadow: 0 0 0 2px rgba(120, 220, 250, 0.3), 0 0 8px rgba(120, 220, 250, 0.2);
+                box-shadow: 0 0 0 2px rgba(255, 163, 0, 0.4), 0 0 8px rgba(255, 163, 0, 0.3);
             }
             .sw:active {
                 transform: scale(0.95);
