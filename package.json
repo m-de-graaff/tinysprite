@@ -30,7 +30,8 @@
     "prebuild": "npm run clean",
     "size": "npm run build && node -e \"console.log('Decoder:', require('fs').statSync('dist/decoder.min.js').size, 'bytes'); console.log('Encoder:', require('fs').statSync('dist/encoder.min.js').size, 'bytes');\"",
     "size:check": "node scripts/check-size.js",
-    "size:full": "npm run build && npm run size:check"
+    "size:full": "npm run build && npm run size:check",
+    "dev": "npx http-server src -p 8080 -c-1 --cors"
   },
   "devDependencies": {
     "terser": "^5.0.0",
