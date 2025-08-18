@@ -1,0 +1,50 @@
+{
+  "name": "tinysprites",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Ultra-compact sprite encoder/decoder for pixel art",
+  "main": "dist/decoder.min.js",
+  "module": "dist/decoder.min.js",
+  "exports": {
+    ".": {
+      "import": "./dist/decoder.min.js",
+      "require": "./dist/decoder.min.js"
+    },
+    "./decoder": {
+      "import": "./dist/decoder.min.js",
+      "require": "./dist/decoder.min.js"
+    },
+    "./encoder": {
+      "import": "./dist/encoder.min.js",
+      "require": "./dist/encoder.min.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run build:decoder && npm run build:encoder",
+    "build:decoder": "terser src/decoder.js -o dist/decoder.min.js --compress drop_console,drop_debugger,passes=5,unsafe,unsafe_comps,unsafe_Function,unsafe_math,unsafe_proto,unsafe_regexp,unsafe_undefined,unsafe_arrows,unsafe_methods,unsafe_symbols,booleans_as_integers,hoist_funs,hoist_vars,if_return,join_vars,sequences,side_effects,unused,reduce_vars,reduce_funcs,collapse_vars,dead_code,conditionals,comparisons,typeofs,loops,switches,negate_iife,inline,hoist_props,computed_props,arguments,keep_infinity=false,keep_classnames=false,keep_fnames=false,keep_fargs=false,properties --mangle toplevel,eval,reserved=[] --format comments=false,beautify=false,semicolons=false,quote_style=0,wrap_iife,wrap_func_args,ascii_only,indent_level=0,indent_start=0,max_line_len=0,keep_numbers=false,keep_quoted_props=false",
+    "build:encoder": "terser src/encoder.js -o dist/encoder.min.js --compress drop_console,drop_debugger,passes=5,unsafe,unsafe_comps,unsafe_Function,unsafe_math,unsafe_proto,unsafe_regexp,unsafe_undefined,unsafe_arrows,unsafe_methods,unsafe_symbols,booleans_as_integers,hoist_funs,hoist_vars,if_return,join_vars,sequences,side_effects,unused,reduce_vars,reduce_funcs,collapse_vars,dead_code,conditionals,comparisons,typeofs,loops,switches,negate_iife,inline,hoist_props,computed_props,arguments,keep_infinity=false,keep_classnames=false,keep_fnames=false,keep_fargs=false,properties --mangle toplevel,eval,reserved=[] --format comments=false,beautify=false,semicolons=false,quote_style=0,wrap_iife,wrap_func_args,ascii_only,indent_level=0,indent_start=0,max_line_len=0,keep_numbers=false,keep_quoted_props=false",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "size": "npm run build && node -e \"console.log('Decoder:', require('fs').statSync('dist/decoder.min.js').size, 'bytes'); console.log('Encoder:', require('fs').statSync('dist/encoder.min.js').size, 'bytes');\"",
+    "size:check": "node scripts/check-size.js",
+    "size:full": "npm run build && npm run size:check"
+  },
+  "devDependencies": {
+    "terser": "^5.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "keywords": [
+    "sprite",
+    "encoder",
+    "decoder",
+    "compression",
+    "pixel-art",
+    "js13k",
+    "tiny"
+  ],
+  "author": "",
+  "license": "MIT"
+}

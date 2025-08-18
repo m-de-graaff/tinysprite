@@ -1,0 +1,63 @@
+name: Build and Size Check
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Calculate and display file sizes
+        run: |
+          echo "📊 Build completed successfully!"
+          echo "=================================="
+
+          DECODER_SIZE=$(wc -c < dist/decoder.min.js)
+          ENCODER_SIZE=$(wc -c < dist/encoder.min.js)
+          TOTAL_SIZE=$((DECODER_SIZE + ENCODER_SIZE))
+
+          echo "Decoder: ${DECODER_SIZE} bytes"
+          echo "Encoder: ${ENCODER_SIZE} bytes"
+          echo "Total: ${TOTAL_SIZE} bytes"
+          echo "=================================="
+
+          # Check if files are within reasonable size limits
+          if [ $DECODER_SIZE -gt 10000 ]; then
+            echo "⚠️  Warning: Decoder size (${DECODER_SIZE} bytes) is larger than 10KB"
+          fi
+
+          if [ $ENCODER_SIZE -gt 10000 ]; then
+            echo "⚠️  Warning: Encoder size (${ENCODER_SIZE} bytes) is larger than 10KB"
+          fi
+
+          if [ $TOTAL_SIZE -gt 20000 ]; then
+            echo "⚠️  Warning: Total size (${TOTAL_SIZE} bytes) is larger than 20KB"
+          fi
+
+          echo "✅ All checks completed!"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-files
+          path: dist/
+          retention-days: 7

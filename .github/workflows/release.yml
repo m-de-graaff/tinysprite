@@ -1,0 +1,69 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Calculate file sizes
+        id: sizes
+        run: |
+          DECODER_SIZE=$(wc -c < dist/decoder.min.js)
+          ENCODER_SIZE=$(wc -c < dist/encoder.min.js)
+          TOTAL_SIZE=$((DECODER_SIZE + ENCODER_SIZE))
+
+          echo "decoder_size=$DECODER_SIZE" >> $GITHUB_OUTPUT
+          echo "encoder_size=$ENCODER_SIZE" >> $GITHUB_OUTPUT
+          echo "total_size=$TOTAL_SIZE" >> $GITHUB_OUTPUT
+
+          echo "📊 Build completed successfully!"
+          echo "Decoder: ${DECODER_SIZE} bytes"
+          echo "Encoder: ${ENCODER_SIZE} bytes"
+          echo "Total: ${TOTAL_SIZE} bytes"
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/decoder.min.js
+            dist/encoder.min.js
+          body: |
+            ## 🚀 Release ${{ github.ref_name }}
+
+            ### 📦 Bundle Sizes
+            - **Decoder**: ${{ steps.sizes.outputs.decoder_size }} bytes
+            - **Encoder**: ${{ steps.sizes.outputs.encoder_size }} bytes
+            - **Total**: ${{ steps.sizes.outputs.total_size }} bytes
+
+            ### 📁 Files Included
+            - `decoder.min.js` - Ultra-compact sprite decoder
+            - `encoder.min.js` - Ultra-compact sprite encoder
+
+            ### 🔧 Build Info
+            - Built on: ${{ github.event.head_commit.timestamp }}
+            - Commit: ${{ github.sha }}
+            - Branch: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
