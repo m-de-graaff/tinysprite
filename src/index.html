@@ -98,7 +98,7 @@
                 </div>
             </div>
 
-            <div class="pill" id="fileBadge">untitled.ts</div>
+            <div class="pill" id="fileBadge">untitled.tspr</div>
             <div class="pill" id="sizeBadge">–</div>
         </nav>
 
@@ -165,55 +165,53 @@
                         <input id="transIdx" type="number" value="-1" class="field mono" style="width: 80px;" />
                     </div>
                 </div>
-
-                <div class="body">
-                    <div class="row">
-                        <label>Palette</label>
-                        <button id="btnAddColor" class="btn">+ add</button>
-                        <button id="btnDelColor" class="btn">− del</button>
-                        <button id="btnTrans" class="btn">Set transparent to active</button>
-                    </div>
-                    <div id="palette" class="palette"></div>
-                </div>
             </section>
-
-            <!-- Right: I/O & Optimizer -->
-            <section class="card">
-                <h2>Import / Export</h2>
-                <div class="body">
-                    <div class="row">
-                        <button id="btnExport" class="btn">Export (ts1|string)</button>
-                        <button id="btnExportOpt" class="btn">Export Optimized</button>
+            <!-- Right: Sidebar -->
+            <section class="card" id="sidebar">
+                <nav class="tabs">
+                    <button class="tab-btn active" data-tab="colors">Colors</button>
+                    <button class="tab-btn" data-tab="optimizer">Optimizer</button>
+                </nav>
+                <div id="tab-colors" class="tab-pane active">
+                    <h2>Colors</h2>
+                    <div class="body">
+                        <div class="row">
+                            <label>Palette</label>
+                            <button id="btnAddColor" class="btn">+ add</button>
+                            <button id="btnDelColor" class="btn">− del</button>
+                            <button id="btnTrans" class="btn">Set transparent to active</button>
+                        </div>
+                        <div id="palette" class="palette"></div>
                     </div>
-                    <textarea id="io"></textarea>
-                    <div class="row">
-                        <button id="btnImport" class="btn">Import string</button>
-                        <input id="fileImg" type="file" accept="image/*,.ts" class="field" />
-                        <button id="btnLoadPNG" class="btn">Import PNG → quantize</button>
-                    </div>
-                    <div class="stats" id="stats"></div>
                 </div>
-
-                <h2>Optimizer (min size)</h2>
-                <div class="body">
-                    <div class="row">
-                        <label><input type="checkbox" id="optAutoMode" checked /> Try all color modes</label>
+                <div id="tab-optimizer" class="tab-pane">
+                    <h2>Optimizer</h2>
+                    <div class="body">
+                        <div class="row">
+                            <label><input type="checkbox" id="optAutoMode" checked /> Try all color modes</label>
+                        </div>
+                        <div class="row">
+                            <label><input type="checkbox" id="optRLE" checked /> RLE</label> <label><input type="checkbox" id="optCOPY" checked /> COPY (LZ)</label> <label><input type="checkbox" id="optROW" checked /> ROW_REPEAT</label>
+                            <label><input type="checkbox" id="optPAT" checked /> Patterns</label> <label><input type="checkbox" id="optFAST" /> Fast pass</label>
+                        </div>
+                        <div class="row">
+                            <label>Pattern length</label><input id="optPatMin" type="number" value="3" min="2" class="field" style="width: 60px;" />–
+                            <input id="optPatMax" type="number" value="12" min="3" class="field" style="width: 60px;" /> <label>Max patterns</label>
+                            <input id="optPatCount" type="number" value="10" min="0" max="16" class="field" style="width: 60px;" />
+                        </div>
+                        <div class="row"><label>Palette merge Δ (lossy)</label> <input id="optMerge" type="range" min="0" max="64" step="1" value="0" /> <span id="optMergeVal" class="mono">0</span></div>
+                        <div class="row"><label>Import quantize max palette</label> <input id="optMaxPal" type="number" value="16" min="2" max="256" class="field" style="width: 80px;" /></div>
+                        <div class="row"><em class="hint">Optimizer will encode many variants and pick the smallest. Lossy palette merge can reduce bpi; set Δ>0 to enable (merges close colors).</em></div>
+                        <div class="stats" id="stats"></div>
                     </div>
-                    <div class="row">
-                        <label><input type="checkbox" id="optRLE" checked /> RLE</label> <label><input type="checkbox" id="optCOPY" checked /> COPY (LZ)</label> <label><input type="checkbox" id="optROW" checked /> ROW_REPEAT</label>
-                        <label><input type="checkbox" id="optPAT" checked /> Patterns</label> <label><input type="checkbox" id="optFAST" /> Fast pass</label>
-                    </div>
-                    <div class="row">
-                        <label>Pattern length</label><input id="optPatMin" type="number" value="3" min="2" class="field" style="width: 60px;" />–<input id="optPatMax" type="number" value="12" min="3" class="field" style="width: 60px;" />
-                        <label>Max patterns</label><input id="optPatCount" type="number" value="10" min="0" max="16" class="field" style="width: 60px;" />
-                    </div>
-                    <div class="row"><label>Palette merge Δ (lossy)</label> <input id="optMerge" type="range" min="0" max="64" step="1" value="0" /> <span id="optMergeVal" class="mono">0</span></div>
-                    <div class="row"><label>Import quantize max palette</label> <input id="optMaxPal" type="number" value="16" min="2" max="256" class="field" style="width: 80px;" /></div>
-                    <div class="row"><em class="hint">Optimizer will encode many variants and pick the smallest. Lossy palette merge can reduce bpi; set Δ>0 to enable (merges close colors).</em></div>
                 </div>
             </section>
         </main>
 
+        <!-- Hidden file input for imports -->
+        <div style="display: none;">
+            <input id="fileImg" type="file" accept="image/*,.tspr" />
+        </div>
         <!-- Modals -->
         <dialog id="dlgProps">
             <div class="modal-head">Project Properties</div>

@@ -309,3 +309,25 @@ dialog::backdrop {
     border: 1px solid var(--line);
     color: var(--muted);
 }
+
+/* Sidebar tabs */
+.tabs {
+    display: flex;
+}
+.tab-btn {
+    flex: 1;
+    padding: 6px 8px;
+    background: var(--panel-2);
+    border: 0;
+    color: var(--fg);
+    cursor: pointer;
+}
+.tab-btn.active {
+    background: var(--panel-3);
+}
+.tab-pane {
+    display: none;
+}
+.tab-pane.active {
+    display: block;
+}

@@ -12,7 +12,6 @@ const Z = document.getElementById("zoom");
 const ZV = document.getElementById("zoomVal");
 const GRID = document.getElementById("chkGrid");
 const PALETTE = document.getElementById("palette");
-const IO = document.getElementById("io");
 const STATS = document.getElementById("stats");
 const TRANS = document.getElementById("transIdx");
 const SELBOX = document.getElementById("selBox");
@@ -36,8 +35,19 @@ const OPT = {
     maxPal: document.getElementById("optMaxPal"),
 };
 
+// Sidebar tabs
+const tabs = document.querySelectorAll("#sidebar .tab-btn");
+const panes = document.querySelectorAll("#sidebar .tab-pane");
+tabs.forEach((t) =>
+    t.addEventListener("click", () => {
+        tabs.forEach((b) => b.classList.toggle("active", b === t));
+        panes.forEach((p) => p.classList.toggle("active", p.id === "tab-" + t.dataset.tab));
+    })
+);
+
 // Project state with frames
 const project = {
+    name: "untitled.tspr",
     name: "untitled.ts",
     w: 12,
     h: 12,
@@ -254,6 +264,16 @@ CV.addEventListener("mousemove", (e) => {
     doPaint(pos.x, pos.y);
     draw();
 });
+
+CV.addEventListener(
+    "wheel",
+    (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0) handleMenu("zoomIn");
+        else handleMenu("zoomOut");
+    },
+    { passive: false }
+);
 
 function rectFrom(a, b) {
     const x = Math.min(a.x, b.x),
@@ -509,12 +529,12 @@ function encodeOnce(opts) {
 
 function exportString() {
     const s = "ts1|" + encodeOnce({ colorMode: modeFromPref(), enablePatterns: true, enableRowRepeat: true, enableCopy: true, enableRLE: true, returnString: true });
-    IO.value = s;
+    navigator.clipboard.writeText(s).catch(() => {});
+    alert("Export copied to clipboard.");
     updateStats(s);
     rememberRecent(s);
     project.lastExport = { type: "string", payload: s };
 }
-document.getElementById("btnExport").onclick = exportString;
 
 // Palette merge (lossy) — merges colors within Δ (Manhattan distance) and remaps indices
 function paletteMerge(delta) {
@@ -622,12 +642,12 @@ function exportOptimized() {
         return;
     }
     const s = "ts1|" + toB64Url(best.bytes);
-    IO.value = s;
+    navigator.clipboard.writeText(s).catch(() => {});
+    alert("Optimized export copied to clipboard.");
     updateStats(s, best);
     rememberRecent(s);
     project.lastExport = { type: "string", payload: s, params: best.cfg };
 }
-document.getElementById("btnExportOpt").onclick = exportOptimized;
 
 function toB64Url(bytes) {
     let bin = "";
@@ -737,8 +757,7 @@ function openRecent() {
         it.className = "item";
         it.textContent = `${r.name} — ${new Date(r.t).toLocaleString()}`;
         it.onclick = () => {
-            IO.value = r.ts;
-            importString();
+            importString(r.ts);
             dlgRecent.close();
         };
         list.appendChild(it);
@@ -772,7 +791,7 @@ function handleMenu(action) {
     const map = {
         newDoc: () => {
             if (!confirm("Discard current project and start new?")) return;
-            project.name = "untitled.ts";
+            project.name = "untitled.tspr";
             project.w = 12;
             project.h = 12;
             project.frames = [new Uint8Array(12 * 12)];
@@ -784,14 +803,14 @@ function handleMenu(action) {
         openDoc: () => {
             const s = prompt("Paste ts1|string:");
             if (!s) return;
-            IO.value = s.trim();
-            importString();
+            importString(s.trim());
         },
         openRecent: () => openRecent(),
         save: () => {
             try {
+                if (!project.lastExport) throw new Error();
                 const key = "ts_save_" + project.name;
-                localStorage.setItem(key, IO.value || "");
+                localStorage.setItem(key, project.lastExport.payload || "");
                 alert("Saved to localStorage: " + key);
             } catch (e) {
                 alert("Save failed");
@@ -803,7 +822,8 @@ function handleMenu(action) {
             setBadge();
             const key = "ts_save_" + n;
             try {
-                localStorage.setItem(key, IO.value || "");
+                if (!project.lastExport) throw new Error();
+                localStorage.setItem(key, project.lastExport.payload || "");
                 alert("Saved as " + key);
             } catch (e) {
                 alert("Save failed");
@@ -813,8 +833,9 @@ function handleMenu(action) {
         exportOptimized: () => exportOptimized(),
         repeatExport: () => {
             if (project.lastExport) {
-                IO.value = project.lastExport.payload;
+                navigator.clipboard.writeText(project.lastExport.payload).catch(() => {});
                 updateStats(project.lastExport.payload);
+                alert("Last export copied to clipboard.");
             }
         },
         exportSheet: () => exportSpriteSheet(),
@@ -825,8 +846,7 @@ function handleMenu(action) {
         importString: () => {
             const s = prompt("Paste ts1|string:");
             if (!s) return;
-            IO.value = s.trim();
-            importString();
+            importString(s.trim());
         },
         importPNG: () => {
             document.getElementById("fileImg").click();
@@ -1091,12 +1111,12 @@ function showHistory() {
 }
 
 /* -------------------------------------------------------
-    * Import / Export (panel buttons)
+    * Import / Export helpers
     * -----------------------------------------------------*/
-function importString() {
-    const s = IO.value.trim();
-    if (!s) return;
-    const dec = TS.decode(s);
+function importString(s) {
+    const str = (s || "").trim();
+    if (!str) return;
+    const dec = TS.decode(str);
     project.w = dec.width;
     project.h = dec.height;
     project.frames = [dec.indices];
@@ -1107,53 +1127,47 @@ function importString() {
     H.value = project.h;
     resizeCanvas();
     renderPalette();
-    updateStats(s);
+    updateStats(str);
     renderFrames();
-    rememberRecent(s);
+    rememberRecent(str);
     setBadge();
 }
-document.getElementById("btnImport").onclick = importString;
 
-document.getElementById("btnLoadPNG").onclick = async () => {
-    const f = document.getElementById("fileImg").files[0];
-    if (!f) return;
-    const img = new Image();
-    img.src = URL.createObjectURL(f);
-    await img.decode();
-    const c = document.createElement("canvas");
-    c.width = img.naturalWidth;
-    c.height = img.naturalHeight;
-    const cx = c.getContext("2d");
-    cx.drawImage(img, 0, 0);
-    const w = c.width,
-        h = c.height;
-    const rgba = cx.getImageData(0, 0, w, h).data;
-    project.w = w;
-    project.h = h;
-    const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
-    const dec = TS.decode(bytes);
-    project.frames = [dec.indices];
-    project.frame = 0;
-    project.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
-    W.value = w;
-    H.value = h;
-    resizeCanvas();
-    renderPalette();
-    updateStats(bytes);
-    renderFrames();
-    URL.revokeObjectURL(img.src);
-};
-
-// File input direct .ts reader
+// File input direct .tspr reader
 document.getElementById("fileImg").addEventListener("change", async (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    if (f.name.endsWith(".ts")) {
+    if (f.name.endsWith(".tspr")) {
         const ab = await f.arrayBuffer();
         const bytes = new Uint8Array(ab);
         const s = "ts1|" + toB64Url(bytes);
-        IO.value = s;
-        importString();
+        importString(s);
+    } else {
+        const img = new Image();
+        img.src = URL.createObjectURL(f);
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const cx = c.getContext("2d");
+        cx.drawImage(img, 0, 0);
+        const w = c.width,
+            h = c.height;
+        const rgba = cx.getImageData(0, 0, w, h).data;
+        project.w = w;
+        project.h = h;
+        const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
+        const dec = TS.decode(bytes);
+        project.frames = [dec.indices];
+        project.frame = 0;
+        project.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+        W.value = w;
+        H.value = h;
+        resizeCanvas();
+        renderPalette();
+        updateStats(bytes);
+        renderFrames();
+        URL.revokeObjectURL(img.src);
     }
 });
 
