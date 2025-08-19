@@ -553,6 +553,34 @@ document.getElementById("delLayer").onclick = () => {
     renderLayers();
     draw();
 };
+document.getElementById("renLayer").onclick = () => {
+    if (!project) return;
+    const layer = project.layers[project.layer];
+    const nn = prompt("Layer name", layer.name);
+    if (nn) {
+        pushHistory("rename layer");
+        layer.name = nn;
+        project.dirty = true;
+        setBadge();
+        renderLayers();
+    }
+};
+document.getElementById("mergeLayer").onclick = () => {
+    if (!project || project.layer >= project.layers.length - 1) return;
+    pushHistory("merge layer");
+    const top = project.layers[project.layer];
+    const below = project.layers[project.layer + 1];
+    const t = Number(TRANS.value) | 0;
+    for (let i = 0; i < top.indices.length; i++) {
+        const v = top.indices[i];
+        if (v !== t) below.indices[i] = v;
+    }
+    project.layers.splice(project.layer, 1);
+    project.dirty = true;
+    setBadge();
+    renderLayers();
+    draw();
+};
 
 function renderLayers() {
     layersList.innerHTML = "";
@@ -1195,6 +1223,8 @@ function handleMenu(action) {
         layersNew: () => document.getElementById("addLayer").click(),
         layersDel: () => document.getElementById("delLayer").click(),
         layersDup: () => document.getElementById("dupLayer").click(),
+        layersRen: () => document.getElementById("renLayer").click(),
+        layersMerge: () => document.getElementById("mergeLayer").click(),
         optimizer: () => document.getElementById("dlgOptimizer").showModal(),
         zoomIn: () => {
             Z.value = String(Math.min(100, Number(Z.value) + 2));
