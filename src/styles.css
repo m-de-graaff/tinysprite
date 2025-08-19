@@ -50,6 +50,32 @@ body {
     letter-spacing: 0.2px;
     color: var(--fg);
 }
+.doc-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.doc-tab {
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #0d0e12;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+.doc-tab.active {
+    background: var(--panel-2);
+    color: var(--fg);
+}
+.doc-tab .close {
+    margin-left: 6px;
+    color: var(--dim);
+}
+.doc-tab .close:hover {
+    color: var(--fg);
+}
 .menugroup {
     position: relative;
 }

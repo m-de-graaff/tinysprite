@@ -16,7 +16,7 @@ const STATS = document.getElementById("stats");
 const TRANS = document.getElementById("transIdx");
 const SELBOX = document.getElementById("selBox");
 const GRIDWRAP = document.getElementById("gridWrap");
-const FILEBADGE = document.getElementById("fileBadge");
+const DOCTABS = document.getElementById("docTabs");
 const SIZEBADGE = document.getElementById("sizeBadge");
 
 // Optimizer UI
@@ -45,30 +45,92 @@ tabs.forEach((t) =>
     })
 );
 
-// Project state with frames
-const project = {
-    name: "untitled.tspr",
-    name: "untitled.ts",
-    w: 12,
-    h: 12,
-    frames: [new Uint8Array(12 * 12)], // array of indices per frame
-    frame: 0,
-    palette: [
-        [0, 0, 0],
-        [255, 255, 255],
-        [255, 0, 0],
-        [0, 255, 0],
-        [0, 0, 255],
-    ],
-    active: 2,
-    tool: "pen",
-    zoom: 20,
-    brushSize: 1,
-    brushShape: "square",
-    selection: null, // {x,y,w,h}
-    preferredColorMode: "auto",
-    lastExport: null, // {type, bytes|string, params}
-};
+TRANS.addEventListener("input", () => {
+    project.transparencyIndex = Number(TRANS.value) | 0;
+    renderPalette();
+    draw();
+});
+
+// Projects
+const projects = [];
+let project;
+let history;
+
+function createProject(name = "untitled.tspr", w = 12, h = 12) {
+    return {
+        name,
+        w,
+        h,
+        frames: [new Uint8Array(w * h)], // array of indices per frame
+        frame: 0,
+        palette: [
+            [0, 0, 0],
+            [255, 255, 255],
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+        ],
+        active: 2,
+        tool: "pen",
+        zoom: 20,
+        brushSize: 1,
+        brushShape: "square",
+        selection: null, // {x,y,w,h}
+        preferredColorMode: "auto",
+        lastExport: null, // {type, bytes|string, params}
+        transparencyIndex: -1,
+        history: { undo: [], redo: [] },
+    };
+}
+
+function activateProject(p) {
+    project = p;
+    history = project.history;
+    W.value = project.w;
+    H.value = project.h;
+    TRANS.value = String(project.transparencyIndex);
+    Z.value = project.zoom;
+    ZV.textContent = String(project.zoom);
+    resizeCanvas();
+    renderPalette();
+    renderFrames();
+    draw();
+    refreshHistoryBadge();
+    renderDocTabs();
+    updateStats(new Uint8Array());
+}
+
+function renderDocTabs() {
+    DOCTABS.innerHTML = "";
+    projects.forEach((p) => {
+        const tab = document.createElement("div");
+        tab.className = "doc-tab" + (p === project ? " active" : "");
+        tab.textContent = p.name;
+        const close = document.createElement("span");
+        close.className = "close";
+        close.textContent = "×";
+        close.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeProject(p);
+        });
+        tab.appendChild(close);
+        tab.addEventListener("click", () => activateProject(p));
+        DOCTABS.appendChild(tab);
+    });
+}
+
+function closeProject(p) {
+    const idx = projects.indexOf(p);
+    if (idx === -1) return;
+    projects.splice(idx, 1);
+    if (projects.length === 0) {
+        const n = createProject();
+        projects.push(n);
+        activateProject(n);
+    } else {
+        activateProject(projects[idx] || projects[idx - 1]);
+    }
+}
 
 /* -------------------------------------------------------
     * Utilities
@@ -95,7 +157,7 @@ function hexToRgb(h) {
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 function setBadge() {
-    FILEBADGE.textContent = project.name;
+    renderDocTabs();
 }
 
 function pushHistory(label) {
@@ -109,7 +171,10 @@ function refreshHistoryBadge() {
     SIZEBADGE.textContent = `frames:${project.frames.length} • ${project.w}×${project.h}`;
 }
 
-const history = { undo: [], redo: [] };
+// init
+const initial = createProject();
+projects.push(initial);
+activateProject(initial);
 
 /* -------------------------------------------------------
     * Rendering
@@ -532,7 +597,7 @@ function exportString() {
     navigator.clipboard.writeText(s).catch(() => {});
     alert("Export copied to clipboard.");
     updateStats(s);
-    rememberRecent(s);
+    rememberRecent(s, project.name);
     project.lastExport = { type: "string", payload: s };
 }
 
@@ -645,7 +710,7 @@ function exportOptimized() {
     navigator.clipboard.writeText(s).catch(() => {});
     alert("Optimized export copied to clipboard.");
     updateStats(s, best);
-    rememberRecent(s);
+    rememberRecent(s, project.name);
     project.lastExport = { type: "string", payload: s, params: best.cfg };
 }
 
@@ -735,10 +800,10 @@ function drawFrameTo(cx, indices, dx, dy) {
 /* -------------------------------------------------------
     * File/Recent (localStorage)
     * -----------------------------------------------------*/
-function rememberRecent(s) {
+function rememberRecent(s, name) {
     try {
         const rec = JSON.parse(localStorage.getItem("ts_recent") || "[]");
-        rec.unshift({ name: project.name, ts: s, t: Date.now() });
+        rec.unshift({ name, ts: s, t: Date.now() });
         while (rec.length > 12) rec.pop();
         localStorage.setItem("ts_recent", JSON.stringify(rec));
     } catch (e) {}
@@ -757,7 +822,12 @@ function openRecent() {
         it.className = "item";
         it.textContent = `${r.name} — ${new Date(r.t).toLocaleString()}`;
         it.onclick = () => {
-            importString(r.ts);
+            const p = importString(r.ts, r.name);
+            if (p) {
+                projects.push(p);
+                activateProject(p);
+                updateStats(r.ts);
+            }
             dlgRecent.close();
         };
         list.appendChild(it);
@@ -783,6 +853,9 @@ menubar.addEventListener("click", (e) => {
     closeAllMenus();
     handleMenu(act);
 });
+document.addEventListener("click", (e) => {
+    if (!e.target.closest("#menubar")) closeAllMenus();
+});
 function closeAllMenus() {
     menubar.querySelectorAll(".menu-btn").forEach((b) => b.setAttribute("aria-expanded", "false"));
     menubar.querySelectorAll(".dropdown").forEach((d) => d.removeAttribute("open"));
@@ -790,20 +863,21 @@ function closeAllMenus() {
 function handleMenu(action) {
     const map = {
         newDoc: () => {
-            if (!confirm("Discard current project and start new?")) return;
-            project.name = "untitled.tspr";
-            project.w = 12;
-            project.h = 12;
-            project.frames = [new Uint8Array(12 * 12)];
-            project.frame = 0;
-            draw();
-            renderFrames();
-            setBadge();
+            const p = createProject();
+            projects.push(p);
+            activateProject(p);
         },
         openDoc: () => {
             const s = prompt("Paste ts1|string:");
             if (!s) return;
-            importString(s.trim());
+            const n = prompt("File name", "untitled.tspr") || "untitled.tspr";
+            const str = s.trim();
+            const p = importString(str, n);
+            if (p) {
+                projects.push(p);
+                activateProject(p);
+                updateStats(str);
+            }
         },
         openRecent: () => openRecent(),
         save: () => {
@@ -846,27 +920,29 @@ function handleMenu(action) {
         importString: () => {
             const s = prompt("Paste ts1|string:");
             if (!s) return;
-            importString(s.trim());
+            const n = prompt("File name", "untitled.tspr") || "untitled.tspr";
+            const str = s.trim();
+            const p = importString(str, n);
+            if (p) {
+                projects.push(p);
+                activateProject(p);
+                updateStats(str);
+            }
         },
         importPNG: () => {
             document.getElementById("fileImg").click();
         },
         close: () => {
             if (confirm("Close current project?")) {
-                project.frames = [new Uint8Array(project.w * project.h)];
-                project.frame = 0;
-                draw();
-                renderFrames();
+                closeProject(project);
             }
         },
         closeAll: () => {
             if (confirm("Close ALL (reset)?")) {
-                project.frames = [new Uint8Array(12 * 12)];
-                project.frame = 0;
-                project.w = 12;
-                project.h = 12;
-                draw();
-                renderFrames();
+                projects.length = 0;
+                const n = createProject();
+                projects.push(n);
+                activateProject(n);
             }
         },
         undo: () => undo(),
@@ -1113,24 +1189,17 @@ function showHistory() {
 /* -------------------------------------------------------
     * Import / Export helpers
     * -----------------------------------------------------*/
-function importString(s) {
+function importString(s, name = "untitled.tspr") {
     const str = (s || "").trim();
-    if (!str) return;
+    if (!str) return null;
     const dec = TS.decode(str);
-    project.w = dec.width;
-    project.h = dec.height;
-    project.frames = [dec.indices];
-    project.frame = 0;
-    TRANS.value = String(dec.transparencyIndex ?? -1);
-    project.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
-    W.value = project.w;
-    H.value = project.h;
-    resizeCanvas();
-    renderPalette();
-    updateStats(str);
-    renderFrames();
-    rememberRecent(str);
-    setBadge();
+    const p = createProject(name, dec.width, dec.height);
+    p.frames = [dec.indices];
+    p.frame = 0;
+    p.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
+    p.transparencyIndex = dec.transparencyIndex ?? -1;
+    rememberRecent(str, p.name);
+    return p;
 }
 
 // File input direct .tspr reader
@@ -1141,7 +1210,12 @@ document.getElementById("fileImg").addEventListener("change", async (e) => {
         const ab = await f.arrayBuffer();
         const bytes = new Uint8Array(ab);
         const s = "ts1|" + toB64Url(bytes);
-        importString(s);
+        const p = importString(s, f.name);
+        if (p) {
+            projects.push(p);
+            activateProject(p);
+            updateStats(s);
+        }
     } else {
         const img = new Image();
         img.src = URL.createObjectURL(f);
@@ -1154,21 +1228,19 @@ document.getElementById("fileImg").addEventListener("change", async (e) => {
         const w = c.width,
             h = c.height;
         const rgba = cx.getImageData(0, 0, w, h).data;
-        project.w = w;
-        project.h = h;
         const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
         const dec = TS.decode(bytes);
-        project.frames = [dec.indices];
-        project.frame = 0;
-        project.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
-        W.value = w;
-        H.value = h;
-        resizeCanvas();
-        renderPalette();
+        const p = createProject(f.name, w, h);
+        p.frames = [dec.indices];
+        p.frame = 0;
+        p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+        p.transparencyIndex = dec.transparencyIndex ?? -1;
+        projects.push(p);
+        activateProject(p);
         updateStats(bytes);
-        renderFrames();
         URL.revokeObjectURL(img.src);
     }
+    e.target.value = "";
 });
 
 // Export sheet/tileset via menu only; still accessible
@@ -1231,9 +1303,7 @@ document.addEventListener("keydown", (e) => {
     * -----------------------------------------------------*/
 function init() {
     setBadge();
-    renderPalette();
-    renderFrames();
-    resizeCanvas();
     updateStats(new Uint8Array());
 }
 init();
+
