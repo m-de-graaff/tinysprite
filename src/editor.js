@@ -1,3 +1,4 @@
+
 import { TinySprites } from "./encoder.js";
 import { TS } from "./decoder.js";
 
@@ -18,6 +19,8 @@ const SELBOX = document.getElementById("selBox");
 const GRIDWRAP = document.getElementById("gridWrap");
 const FILEBADGE = document.getElementById("fileBadge");
 const SIZEBADGE = document.getElementById("sizeBadge");
+const PREVIEW = document.getElementById("preview");
+const PCTX = PREVIEW.getContext("2d", { alpha: true, willReadFrequently: true });
 
 // Optimizer UI
 const OPT = {
@@ -35,24 +38,15 @@ const OPT = {
     maxPal: document.getElementById("optMaxPal"),
 };
 
-// Sidebar tabs
-const tabs = document.querySelectorAll("#sidebar .tab-btn");
-const panes = document.querySelectorAll("#sidebar .tab-pane");
-tabs.forEach((t) =>
-    t.addEventListener("click", () => {
-        tabs.forEach((b) => b.classList.toggle("active", b === t));
-        panes.forEach((p) => p.classList.toggle("active", p.id === "tab-" + t.dataset.tab));
-    })
-);
+const DOC_TABS = document.getElementById("docTabs");
 
-// Project state with frames
+// Project state with layers
 const project = {
     name: "untitled.tspr",
-    name: "untitled.ts",
     w: 12,
     h: 12,
-    frames: [new Uint8Array(12 * 12)], // array of indices per frame
-    frame: 0,
+    layers: [new Uint8Array(12 * 12)], // array of indices per layer
+    layer: 0,
     palette: [
         [0, 0, 0],
         [255, 255, 255],
@@ -94,19 +88,27 @@ function hexToRgb(h) {
     const n = parseInt(h.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+function refreshTabs() {
+    DOC_TABS.innerHTML = "";
+    const tab = document.createElement("div");
+    tab.className = "doc-tab active";
+    tab.textContent = project.name;
+    DOC_TABS.appendChild(tab);
+}
 function setBadge() {
     FILEBADGE.textContent = project.name;
+    refreshTabs();
 }
 
 function pushHistory(label) {
-    const frame = project.frame;
-    const entry = { label, frame, indices: cloneIndices(project.frames[frame]) };
+    const layer = project.layer;
+    const entry = { label, layer, indices: cloneIndices(project.layers[layer]) };
     history.undo.push(entry);
     history.redo.length = 0;
     refreshHistoryBadge();
 }
 function refreshHistoryBadge() {
-    SIZEBADGE.textContent = `frames:${project.frames.length} • ${project.w}×${project.h}`;
+    SIZEBADGE.textContent = `layers:${project.layers.length} • ${project.w}×${project.h}`;
 }
 
 const history = { undo: [], redo: [] };
@@ -118,6 +120,14 @@ function resizeCanvas() {
     const px = project.zoom;
     CV.width = project.w * px;
     CV.height = project.h * px;
+    
+    // Auto-scale preview to fit available space while maintaining aspect ratio
+    const maxWidth = 400;
+    const maxHeight = 300;
+    const scale = Math.min(maxWidth / project.w, maxHeight / project.h);
+    PREVIEW.width = project.w * scale;
+    PREVIEW.height = project.h * scale;
+    
     draw();
 }
 function draw() {
@@ -131,15 +141,17 @@ function draw() {
             CTX.fillRect(x, y, 12, 12);
         }
     }
-    // pixels
-    const data = project.frames[project.frame];
-    for (let y = 0; y < project.h; y++) {
-        for (let x = 0; x < project.w; x++) {
-            const idx = data[iyx(x, y)];
-            if ((Number(TRANS.value) | 0) === idx) continue;
-            const c = project.palette[idx] || [0, 0, 0];
-            CTX.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
-            CTX.fillRect(x * px, y * px, px, px);
+    // pixels from all layers
+    for (let l = 0; l < project.layers.length; l++) {
+        const data = project.layers[l];
+        for (let y = 0; y < project.h; y++) {
+            for (let x = 0; x < project.w; x++) {
+                const idx = data[iyx(x, y)];
+                if ((Number(TRANS.value) | 0) === idx) continue;
+                const c = project.palette[idx] || [0, 0, 0];
+                CTX.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                CTX.fillRect(x * px, y * px, px, px);
+            }
         }
     }
     if (GRID.checked) {
@@ -160,6 +172,7 @@ function draw() {
     }
     CTX.restore();
     drawSelectionBox();
+    drawPreview();
 }
 function drawSelectionBox() {
     const sel = project.selection;
@@ -174,6 +187,26 @@ function drawSelectionBox() {
     SELBOX.style.width = sel.w * px + "px";
     SELBOX.style.height = sel.h * px + "px";
 }
+
+function drawPreview() {
+    const scale = Math.floor(Math.min(PREVIEW.width / project.w, PREVIEW.height / project.h));
+    PCTX.clearRect(0, 0, PREVIEW.width, PREVIEW.height);
+    PCTX.imageSmoothingEnabled = false;
+    for (let l = 0; l < project.layers.length; l++) {
+        const data = project.layers[l];
+        for (let y = 0; y < project.h; y++) {
+            for (let x = 0; x < project.w; x++) {
+                const idx = data[iyx(x, y)];
+                if ((Number(TRANS.value) | 0) === idx) continue;
+                const c = project.palette[idx] || [0, 0, 0];
+                PCTX.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+                PCTX.fillRect(x * scale, y * scale, scale, scale);
+            }
+        }
+    }
+}
+
+
 
 function renderPalette() {
     PALETTE.innerHTML = "";
@@ -289,14 +322,14 @@ function selectFinalize() {
 
 function previewLine(a, b) {
     if (!a) return;
-    const d = project.frames[project.frame];
+    const d = project.layers[project.layer];
     const temp = cloneIndices(d);
     plotLine(temp, a.x, a.y, b.x, b.y, project.active);
     blit(temp);
 }
 
 function blit(src) {
-    const dst = project.frames[project.frame];
+    const dst = project.layers[project.layer];
     dst.set(src);
 }
 
@@ -336,7 +369,7 @@ function putBrush(buf, x, y, v) {
 }
 
 function doPaint(x, y) {
-    const data = project.frames[project.frame];
+    const data = project.layers[project.layer];
     const t = project.tool;
     const v = project.active;
     if (t === "pen") {
@@ -357,7 +390,7 @@ function floodFill(x, y, target, repl) {
     const st = [[x, y]],
         Wd = project.w,
         Hd = project.h,
-        d = project.frames[project.frame];
+        d = project.layers[project.layer];
     while (st.length) {
         const [cx, cy] = st.pop();
         const idx = iyx(cx, cy);
@@ -371,45 +404,45 @@ function floodFill(x, y, target, repl) {
 }
 
 /* -------------------------------------------------------
-    * Frames panel
+    * Layers panel
     * -----------------------------------------------------*/
-const framesList = document.getElementById("framesList");
-document.getElementById("addFrame").onclick = () => {
-    pushHistory("add frame");
-    project.frames.push(cloneIndices(project.frames[project.frame]));
-    project.frame = project.frames.length - 1;
-    renderFrames();
+const layersList = document.getElementById("layersList");
+document.getElementById("addLayer").onclick = () => {
+    pushHistory("add layer");
+    project.layers.push(cloneIndices(project.layers[project.layer]));
+    project.layer = project.layers.length - 1;
+    renderLayers();
     draw();
 };
-document.getElementById("dupFrame").onclick = () => {
-    pushHistory("dup frame");
-    project.frames.splice(project.frame + 1, 0, cloneIndices(project.frames[project.frame]));
-    project.frame++;
-    renderFrames();
+document.getElementById("dupLayer").onclick = () => {
+    pushHistory("dup layer");
+    project.layers.splice(project.layer + 1, 0, cloneIndices(project.layers[project.layer]));
+    project.layer++;
+    renderLayers();
     draw();
 };
-document.getElementById("delFrame").onclick = () => {
-    if (project.frames.length <= 1) return;
-    pushHistory("del frame");
-    project.frames.splice(project.frame, 1);
-    project.frame = Math.max(0, project.frame - 1);
-    renderFrames();
+document.getElementById("delLayer").onclick = () => {
+    if (project.layers.length <= 1) return;
+    pushHistory("del layer");
+    project.layers.splice(project.layer, 1);
+    project.layer = Math.max(0, project.layer - 1);
+    renderLayers();
     draw();
 };
 
-function renderFrames() {
-    framesList.innerHTML = "";
-    project.frames.forEach((_, i) => {
+function renderLayers() {
+    layersList.innerHTML = "";
+    project.layers.forEach((_, i) => {
         const item = document.createElement("div");
         item.className = "item";
-        item.textContent = `Frame ${i + 1}`;
-        if (i === project.frame) item.style.outline = "1px solid #fff";
+        item.textContent = `Layer ${i + 1}`;
+        if (i === project.layer) item.style.outline = "1px solid #fff";
         item.onclick = () => {
-            project.frame = i;
-            renderFrames();
+            project.layer = i;
+            renderLayers();
             draw();
         };
-        framesList.appendChild(item);
+        layersList.appendChild(item);
     });
     refreshHistoryBadge();
 }
@@ -430,7 +463,7 @@ function syncDims() {
         pushHistory("resize");
         project.w = nw;
         project.h = nh;
-        project.frames = project.frames.map((_) => new Uint8Array(nw * nh));
+        project.layers = project.layers.map((_) => new Uint8Array(nw * nh));
     }
     resizeCanvas();
     draw();
@@ -441,13 +474,13 @@ document.getElementById("btnResize").onclick = syncDims;
 document.getElementById("btnClear").onclick = () => {
     pushHistory("clear");
     const tVal = Number.isFinite(Number(TRANS.value)) ? Number(TRANS.value) | 0 : -1;
-    project.frames[project.frame].fill(tVal >= 0 ? tVal : 0);
+    project.layers[project.layer].fill(tVal >= 0 ? tVal : 0);
     draw();
 };
 document.getElementById("btnFlipH").onclick = () => {
     pushHistory("flipH");
     const { w, h } = project;
-    const d = project.frames[project.frame];
+    const d = project.layers[project.layer];
     for (let y = 0; y < h; y++) {
         for (let x = 0; (x < w / 2) | 0; x++) {
             const a = iyx(x, y),
@@ -462,7 +495,7 @@ document.getElementById("btnFlipH").onclick = () => {
 document.getElementById("btnFlipV").onclick = () => {
     pushHistory("flipV");
     const { w, h } = project;
-    const d = project.frames[project.frame];
+    const d = project.layers[project.layer];
     for (let y = 0; (y < h / 2) | 0; y++) {
         for (let x = 0; x < w; x++) {
             const a = iyx(x, y),
@@ -504,7 +537,7 @@ document.getElementById("btnTrans").onclick = () => {
     * Encoding / Optimizer
     * -----------------------------------------------------*/
 function gatherIndices() {
-    return project.frames[project.frame];
+    return project.layers[project.layer];
 }
 function gatherPalette() {
     return project.palette.map(([r, g, b]) => ({ r, g, b }));
@@ -684,30 +717,30 @@ function savePNG(canvas, name) {
 }
 
 function exportSpriteSheet() {
-    const frames = project.frames;
+    const layers = project.layers;
     const px = 1;
     const c = document.createElement("canvas");
-    c.width = project.w * frames.length;
+    c.width = project.w * layers.length;
     c.height = project.h;
     const cx = c.getContext("2d");
-    for (let f = 0; f < frames.length; f++) drawFrameTo(cx, frames[f], f * project.w, 0);
+    for (let f = 0; f < layers.length; f++) drawLayerTo(cx, layers[f], f * project.w, 0);
     savePNG(c, `${project.name.replace(/\.[^.]+$/, "")}_sheet.png`);
 }
 function exportTileset(cols = 4) {
-    const frames = project.frames;
-    const rows = Math.ceil(frames.length / cols);
+    const layers = project.layers;
+    const rows = Math.ceil(layers.length / cols);
     const c = document.createElement("canvas");
     c.width = project.w * cols;
     c.height = project.h * rows;
     const cx = c.getContext("2d");
-    for (let i = 0; i < frames.length; i++) {
+    for (let i = 0; i < layers.length; i++) {
         const x = (i % cols) * project.w,
             y = Math.floor(i / cols) * project.h;
-        drawFrameTo(cx, frames[i], x, y);
+        drawLayerTo(cx, layers[i], x, y);
     }
     savePNG(c, `${project.name.replace(/\.[^.]+$/, "")}_tileset.png`);
 }
-function drawFrameTo(cx, indices, dx, dy) {
+function drawLayerTo(cx, indices, dx, dy) {
     const img = new ImageData(project.w, project.h);
     // build rgba via decoder helper style
     const pal = project.palette;
@@ -794,8 +827,8 @@ function handleMenu(action) {
             project.name = "untitled.tspr";
             project.w = 12;
             project.h = 12;
-            project.frames = [new Uint8Array(12 * 12)];
-            project.frame = 0;
+            project.layers = [new Uint8Array(12 * 12)];
+            project.layer = 0;
             draw();
             renderFrames();
             setBadge();
@@ -853,16 +886,16 @@ function handleMenu(action) {
         },
         close: () => {
             if (confirm("Close current project?")) {
-                project.frames = [new Uint8Array(project.w * project.h)];
-                project.frame = 0;
+                project.layers = [new Uint8Array(project.w * project.h)];
+                project.layer = 0;
                 draw();
                 renderFrames();
             }
         },
         closeAll: () => {
             if (confirm("Close ALL (reset)?")) {
-                project.frames = [new Uint8Array(12 * 12)];
-                project.frame = 0;
+                project.layers = [new Uint8Array(12 * 12)];
+                project.layer = 0;
                 project.w = 12;
                 project.h = 12;
                 draw();
@@ -892,11 +925,12 @@ function handleMenu(action) {
         resize: () => syncDims(),
         brushes: () => alert("Use the brush controls in the Tools panel."),
         props: () => showProps(),
-        framesNew: () => document.getElementById("addFrame").click(),
-        framesDel: () => document.getElementById("delFrame").click(),
-        framesDup: () => document.getElementById("dupFrame").click(),
+        layersNew: () => document.getElementById("addLayer").click(),
+        layersDel: () => document.getElementById("delLayer").click(),
+        layersDup: () => document.getElementById("dupLayer").click(),
+        optimizer: () => document.getElementById("dlgOptimizer").showModal(),
         zoomIn: () => {
-            Z.value = String(Math.min(56, Number(Z.value) + 2));
+            Z.value = String(Math.min(100, Number(Z.value) + 2));
             Z.oninput();
         },
         zoomOut: () => {
@@ -925,7 +959,7 @@ function regionIter(sel, fn) {
 function getSelData() {
     const sel = ensureSel();
     const data = new Uint8Array(sel.w * sel.h);
-    const src = project.frames[project.frame];
+    const src = project.layers[project.layer];
     let k = 0;
     regionIter(sel, (x, y) => {
         data[k++] = src[iyx(x, y)];
@@ -934,7 +968,7 @@ function getSelData() {
 }
 function putSelData(sel, data, dx, dy) {
     const src = data;
-    const dst = project.frames[project.frame];
+    const dst = project.layers[project.layer];
     let k = 0;
     for (let y = 0; y < sel.h; y++)
         for (let x = 0; x < sel.w; x++) {
@@ -953,7 +987,7 @@ function cutSel() {
     const { sel, data } = getSelData();
     clipboard = { w: sel.w, h: sel.h, data };
     regionIter(sel, (x, y) => {
-        project.frames[project.frame][iyx(x, y)] = Number(TRANS.value) | 0;
+        project.layers[project.layer][iyx(x, y)] = Number(TRANS.value) | 0;
     });
     draw();
 }
@@ -966,7 +1000,7 @@ async function copyMergedPNG() {
     c.width = project.w;
     c.height = project.h;
     const cx = c.getContext("2d");
-    drawFrameTo(cx, project.frames[project.frame], 0, 0);
+    drawLayerTo(cx, project.layers[project.layer], 0, 0);
     const blob = await new Promise((res) => c.toBlob(res));
     try {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -991,7 +1025,7 @@ function deleteSel() {
     pushHistory("delete");
     const tidx = Number(TRANS.value) | 0;
     regionIter(project.selection, (x, y) => {
-        project.frames[project.frame][iyx(x, y)] = tidx >= 0 ? tidx : 0;
+        project.layers[project.layer][iyx(x, y)] = tidx >= 0 ? tidx : 0;
     });
     draw();
 }
@@ -999,7 +1033,7 @@ function strokeSel() {
     if (!project.selection) return;
     pushHistory("stroke");
     const s = project.selection;
-    const d = project.frames[project.frame];
+    const d = project.layers[project.layer];
     const v = project.active;
     for (let x = s.x; x < s.x + s.w; x++) {
         d[iyx(x, s.y)] = v;
@@ -1025,7 +1059,7 @@ function rotate180() {
     rotateGeneric(2);
 }
 function rotateGeneric(times) {
-    const d = project.frames[project.frame];
+    const d = project.layers[project.layer];
     let w = project.w,
         h = project.h;
     for (let t = 0; t < times; t++) {
@@ -1036,7 +1070,7 @@ function rotateGeneric(times) {
                     ny = x;
                 out[ny * h + nx] = d[iyx(x, y)];
             }
-        project.frames[project.frame] = out;
+        project.layers[project.layer] = out;
         const tmp = w;
         w = h;
         h = tmp;
@@ -1057,7 +1091,7 @@ function shiftPrompt() {
 function shift(dx, dy) {
     pushHistory("shift");
     const { w, h } = project;
-    const src = project.frames[project.frame];
+    const src = project.layers[project.layer];
     const out = new Uint8Array(w * h);
     for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
@@ -1065,27 +1099,27 @@ function shift(dx, dy) {
                 ny = (y + (dy % h) + h) % h;
             out[iyx(nx, ny)] = src[iyx(x, y)];
         }
-    project.frames[project.frame] = out;
+    project.layers[project.layer] = out;
     draw();
 }
 
 function undo() {
     const e = history.undo.pop();
     if (!e) return;
-    const cur = { label: "undo-back", frame: project.frame, indices: cloneIndices(project.frames[project.frame]) };
+    const cur = { label: "undo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
     history.redo.push(cur);
-    project.frame = e.frame;
-    project.frames[project.frame] = cloneIndices(e.indices);
+    project.layer = e.layer;
+    project.layers[project.layer] = cloneIndices(e.indices);
     renderFrames();
     draw();
 }
 function redo() {
     const e = history.redo.pop();
     if (!e) return;
-    const cur = { label: "redo-back", frame: project.frame, indices: cloneIndices(project.frames[project.frame]) };
+    const cur = { label: "redo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
     history.undo.push(cur);
-    project.frame = e.frame;
-    project.frames[project.frame] = cloneIndices(e.indices);
+    project.layer = e.layer;
+    project.layers[project.layer] = cloneIndices(e.indices);
     renderFrames();
     draw();
 }
@@ -1102,7 +1136,7 @@ function showHistory() {
             it.className = "item";
             it.textContent = e.label;
             it.onclick = () => {
-                project.frames[project.frame] = cloneIndices(e.indices);
+                project.layers[project.layer] = cloneIndices(e.indices);
                 draw();
             };
             list.appendChild(it);
@@ -1119,8 +1153,8 @@ function importString(s) {
     const dec = TS.decode(str);
     project.w = dec.width;
     project.h = dec.height;
-    project.frames = [dec.indices];
-    project.frame = 0;
+    project.layers = [dec.indices];
+    project.layer = 0;
     TRANS.value = String(dec.transparencyIndex ?? -1);
     project.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
     W.value = project.w;
@@ -1158,8 +1192,8 @@ document.getElementById("fileImg").addEventListener("change", async (e) => {
         project.h = h;
         const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
         const dec = TS.decode(bytes);
-        project.frames = [dec.indices];
-        project.frame = 0;
+        project.layers = [dec.indices];
+        project.layer = 0;
         project.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
         W.value = w;
         H.value = h;
@@ -1194,6 +1228,7 @@ document.getElementById("btnPropsOK").onclick = () => {
 
 document.getElementById("btnRecentClose").onclick = () => dlgRecent.close();
 document.getElementById("btnHistoryClose").onclick = () => document.getElementById("dlgHistory").close();
+document.getElementById("btnOptClose").onclick = () => document.getElementById("dlgOptimizer").close();
 
 /* -------------------------------------------------------
     * Keyboard shortcuts
@@ -1232,8 +1267,10 @@ document.addEventListener("keydown", (e) => {
 function init() {
     setBadge();
     renderPalette();
-    renderFrames();
+    renderLayers();
     resizeCanvas();
     updateStats(new Uint8Array());
+    
+
 }
 init();

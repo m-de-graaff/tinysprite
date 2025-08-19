@@ -82,9 +82,10 @@
                 <button class="menu-btn" aria-expanded="false">Project</button>
                 <div class="dropdown" role="menu">
                     <div class="mi" data-action="props">Properties…</div>
-                    <div class="mi" data-action="framesNew">New Frame</div>
-                    <div class="mi" data-action="framesDel">Delete Frame</div>
-                    <div class="mi" data-action="framesDup">Duplicate Frame</div>
+                    <div class="mi" data-action="layersNew">New Layer</div>
+                    <div class="mi" data-action="layersDel">Delete Layer</div>
+                    <div class="mi" data-action="layersDup">Duplicate Layer</div>
+                    <div class="mi" data-action="optimizer">Optimizer…</div>
                 </div>
             </div>
 
@@ -102,9 +103,11 @@
             <div class="pill" id="sizeBadge">–</div>
         </nav>
 
+        <div id="docTabs" class="doc-tabs"></div>
+
         <!-- ===== Main ===== -->
         <main>
-            <!-- Left: Tools & Frames -->
+            <!-- Left: Tools, Palette & Layers -->
             <section class="card">
                 <h2>Tools</h2>
                 <div class="body">
@@ -127,7 +130,7 @@
                     </div>
                     <div class="row">
                         <label>Zoom</label>
-                        <input id="zoom" type="range" min="4" max="56" step="1" value="20" />
+                        <input id="zoom" type="range" min="4" max="100" step="1" value="20" />
                         <span id="zoomVal" class="mono">20</span>
                         <label><input id="chkGrid" type="checkbox" checked /> Grid</label>
                     </div>
@@ -138,14 +141,25 @@
                     </div>
                 </div>
 
-                <h2>Frames</h2>
-                <div class="body" id="framesPanel">
+                <h2>Colors</h2>
+                <div class="body">
                     <div class="row">
-                        <button id="addFrame" class="btn">+ Add</button>
-                        <button id="dupFrame" class="btn">Duplicate</button>
-                        <button id="delFrame" class="btn">Delete</button>
+                        <label>Palette</label>
+                        <button id="btnAddColor" class="btn">+ add</button>
+                        <button id="btnDelColor" class="btn">− del</button>
+                        <button id="btnTrans" class="btn">Set transparent to active</button>
                     </div>
-                    <div id="framesList" class="list"></div>
+                    <div id="palette" class="palette"></div>
+                </div>
+
+                <h2>Layers</h2>
+                <div class="body" id="layersPanel">
+                    <div class="row">
+                        <button id="addLayer" class="btn">+ Add</button>
+                        <button id="dupLayer" class="btn">Duplicate</button>
+                        <button id="delLayer" class="btn">Delete</button>
+                    </div>
+                    <div id="layersList" class="list"></div>
                 </div>
             </section>
 
@@ -166,46 +180,13 @@
                     </div>
                 </div>
             </section>
-            <!-- Right: Sidebar -->
-            <section class="card" id="sidebar">
-                <nav class="tabs">
-                    <button class="tab-btn active" data-tab="colors">Colors</button>
-                    <button class="tab-btn" data-tab="optimizer">Optimizer</button>
-                </nav>
-                <div id="tab-colors" class="tab-pane active">
-                    <h2>Colors</h2>
-                    <div class="body">
-                        <div class="row">
-                            <label>Palette</label>
-                            <button id="btnAddColor" class="btn">+ add</button>
-                            <button id="btnDelColor" class="btn">− del</button>
-                            <button id="btnTrans" class="btn">Set transparent to active</button>
-                        </div>
-                        <div id="palette" class="palette"></div>
-                    </div>
-                </div>
-                <div id="tab-optimizer" class="tab-pane">
-                    <h2>Optimizer</h2>
-                    <div class="body">
-                        <div class="row">
-                            <label><input type="checkbox" id="optAutoMode" checked /> Try all color modes</label>
-                        </div>
-                        <div class="row">
-                            <label><input type="checkbox" id="optRLE" checked /> RLE</label> <label><input type="checkbox" id="optCOPY" checked /> COPY (LZ)</label> <label><input type="checkbox" id="optROW" checked /> ROW_REPEAT</label>
-                            <label><input type="checkbox" id="optPAT" checked /> Patterns</label> <label><input type="checkbox" id="optFAST" /> Fast pass</label>
-                        </div>
-                        <div class="row">
-                            <label>Pattern length</label><input id="optPatMin" type="number" value="3" min="2" class="field" style="width: 60px;" />–
-                            <input id="optPatMax" type="number" value="12" min="3" class="field" style="width: 60px;" /> <label>Max patterns</label>
-                            <input id="optPatCount" type="number" value="10" min="0" max="16" class="field" style="width: 60px;" />
-                        </div>
-                        <div class="row"><label>Palette merge Δ (lossy)</label> <input id="optMerge" type="range" min="0" max="64" step="1" value="0" /> <span id="optMergeVal" class="mono">0</span></div>
-                        <div class="row"><label>Import quantize max palette</label> <input id="optMaxPal" type="number" value="16" min="2" max="256" class="field" style="width: 80px;" /></div>
-                        <div class="row"><em class="hint">Optimizer will encode many variants and pick the smallest. Lossy palette merge can reduce bpi; set Δ>0 to enable (merges close colors).</em></div>
-                        <div class="stats" id="stats"></div>
-                    </div>
-                </div>
-            </section>
+                <!-- Right: Preview -->
+    <section class="card" id="previewCard">
+        <h2>Preview</h2>
+        <div class="body" id="previewWrap">
+            <canvas id="preview" width="96" height="96"></canvas>
+        </div>
+    </section>
         </main>
 
         <!-- Hidden file input for imports -->
@@ -258,6 +239,31 @@
             </div>
             <div class="modal-actions">
                 <button class="btn" id="btnHistoryClose">Close</button>
+            </div>
+        </dialog>
+
+        <dialog id="dlgOptimizer">
+            <div class="modal-head">Optimizer</div>
+            <div class="modal-body">
+                <div class="row">
+                    <label><input type="checkbox" id="optAutoMode" checked /> Try all color modes</label>
+                </div>
+                <div class="row">
+                    <label><input type="checkbox" id="optRLE" checked /> RLE</label> <label><input type="checkbox" id="optCOPY" checked /> COPY (LZ)</label> <label><input type="checkbox" id="optROW" checked /> ROW_REPEAT</label>
+                    <label><input type="checkbox" id="optPAT" checked /> Patterns</label> <label><input type="checkbox" id="optFAST" /> Fast pass</label>
+                </div>
+                <div class="row">
+                    <label>Pattern length</label><input id="optPatMin" type="number" value="3" min="2" class="field" style="width: 60px;" />–
+                    <input id="optPatMax" type="number" value="12" min="3" class="field" style="width: 60px;" /> <label>Max patterns</label>
+                    <input id="optPatCount" type="number" value="10" min="0" max="16" class="field" style="width: 60px;" />
+                </div>
+                <div class="row"><label>Palette merge Δ (lossy)</label> <input id="optMerge" type="range" min="0" max="64" step="1" value="0" /> <span id="optMergeVal" class="mono">0</span></div>
+                <div class="row"><label>Import quantize max palette</label> <input id="optMaxPal" type="number" value="16" min="2" max="256" class="field" style="width: 80px;" /></div>
+                <div class="row"><em class="hint">Optimizer will encode many variants and pick the smallest. Lossy palette merge can reduce bpi; set Δ>0 to enable (merges close colors).</em></div>
+                <div class="stats" id="stats"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" id="btnOptClose">Close</button>
             </div>
         </dialog>
 
