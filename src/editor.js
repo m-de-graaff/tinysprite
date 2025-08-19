@@ -516,7 +516,7 @@ document.getElementById("addLayer").onclick = () => {
     project.layers.push({
         name,
         visible: true,
-        indices: cloneIndices(project.layers[project.layer].indices),
+        indices: new Uint8Array(project.w * project.h),
     });
     project.layer = project.layers.length - 1;
     project.dirty = true;
