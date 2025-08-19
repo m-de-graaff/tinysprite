@@ -41,9 +41,18 @@ const OPT = {
 };
 
 const DOC_TABS = document.getElementById("docTabs");
+const projects = [];
+let untitledCounter = 1;
+function nextUntitled() {
+    let name;
+    do {
+        name = `untitled${untitledCounter++}.tspr`;
+    } while (projects.some((p) => p.name === name));
+    return name;
+}
 
 // Project helpers
-function createProject(name = "untitled.tspr") {
+function createProject(name = nextUntitled()) {
     return {
         name,
         w: 12,
@@ -70,7 +79,6 @@ function createProject(name = "untitled.tspr") {
     };
 }
 
-const projects = [];
 let project = createProject();
 projects.push(project);
 
@@ -1297,6 +1305,15 @@ document.addEventListener("keydown", (e) => {
     } else if (e.ctrlKey && e.key === "n") {
         e.preventDefault();
         handleMenu("newDoc");
+    } else if (e.ctrlKey && e.key === "w") {
+        e.preventDefault();
+        handleMenu("close");
+    } else if (e.ctrlKey && e.key === "Tab") {
+        e.preventDefault();
+        const dir = e.shiftKey ? -1 : 1;
+        let idx = projects.indexOf(project);
+        idx = (idx + dir + projects.length) % projects.length;
+        selectProject(projects[idx]);
     } else if (e.ctrlKey && e.key === "z") {
         e.preventDefault();
         undo();
