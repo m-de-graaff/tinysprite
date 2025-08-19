@@ -105,7 +105,6 @@ function selectProject(p) {
     TRANS.value = String(project.transparencyIndex);
     renderPalette();
     renderLayers();
-    renderFrames();
     draw();
     setBadge();
     refreshHistoryBadge();
@@ -315,6 +314,7 @@ function renderPalette() {
     * -----------------------------------------------------*/
 const toolsEl = document.getElementById("tools");
 toolsEl.addEventListener("click", (e) => {
+    if (!project) return;
     const b = e.target.closest("[data-tool]");
     if (!b) return;
     project.tool = b.dataset.tool;
@@ -323,8 +323,14 @@ toolsEl.addEventListener("click", (e) => {
 
 const brushSizeEl = document.getElementById("brushSize");
 const brushShapeEl = document.getElementById("brushShape");
-brushSizeEl.oninput = () => (project.brushSize = clamp(Number(brushSizeEl.value) | 0, 1, 16));
-brushShapeEl.onchange = () => (project.brushShape = brushShapeEl.value);
+brushSizeEl.oninput = () => {
+    if (!project) return;
+    project.brushSize = clamp(Number(brushSizeEl.value) | 0, 1, 16);
+};
+brushShapeEl.onchange = () => {
+    if (!project) return;
+    project.brushShape = brushShapeEl.value;
+};
 
 function canvasPos(e) {
     const r = CV.getBoundingClientRect();
@@ -335,6 +341,7 @@ let drawing = false,
     lineStart = null,
     selectStart = null;
 CV.addEventListener("mousedown", (e) => {
+    if (!project) return;
     const pos = canvasPos(e);
     if (!within(pos.x, pos.y)) return;
     if (project.tool === "select") {
@@ -353,12 +360,14 @@ CV.addEventListener("mousedown", (e) => {
     }
 });
 window.addEventListener("mouseup", () => {
+    if (!project) return;
     drawing = false;
     if (project.tool === "select" && selectStart) {
         selectFinalize();
     }
 });
 CV.addEventListener("mousemove", (e) => {
+    if (!project) return;
     const pos = canvasPos(e);
     if (!within(pos.x, pos.y)) return;
     if (project.tool === "select" && selectStart) {
@@ -379,6 +388,7 @@ CV.addEventListener("mousemove", (e) => {
 CV.addEventListener(
     "wheel",
     (e) => {
+        if (!project) return;
         e.preventDefault();
         if (e.deltaY < 0) handleMenu("zoomIn");
         else handleMenu("zoomOut");
@@ -533,6 +543,7 @@ function clampInt(v, min) {
     return !Number.isFinite(v) || v < min ? min : v | 0;
 }
 function syncDims() {
+    if (!project) return;
     const nw = clampInt(W.value, 1),
         nh = clampInt(H.value, 1);
     W.value = String(nw);
@@ -616,10 +627,10 @@ document.getElementById("btnTrans").onclick = () => {
     * Encoding / Optimizer
     * -----------------------------------------------------*/
 function gatherIndices() {
-    return project.layers[project.layer];
+    return project ? project.layers[project.layer] : new Uint8Array();
 }
 function gatherPalette() {
-    return project.palette.map(([r, g, b]) => ({ r, g, b }));
+    return project ? project.palette.map(([r, g, b]) => ({ r, g, b })) : [];
 }
 
 function encodeOnce(opts) {
@@ -774,6 +785,11 @@ function modeFromPref() {
 }
 
 function updateStats(bytesOrStr, best) {
+    if (!project) {
+        STATS.textContent = "";
+        SIZEBADGE.textContent = "–";
+        return;
+    }
     const b = typeof bytesOrStr === "string" ? Math.ceil((bytesOrStr.length * 3) / 4) : bytesOrStr.length;
     const unique = new Set(gatherIndices()).size;
     const bpi = Math.max(1, Math.ceil(Math.log2(Math.max(1, unique))));
@@ -917,9 +933,19 @@ function handleMenu(action) {
         openRecent: () => openRecent(),
         save: () => {
             try {
-                if (!project.lastExport) throw new Error();
                 const key = "ts_save_" + project.name;
-                localStorage.setItem(key, project.lastExport.payload || "");
+                const payload =
+                    "ts1|" +
+                    encodeOnce({
+                        colorMode: modeFromPref(),
+                        enablePatterns: true,
+                        enableRowRepeat: true,
+                        enableCopy: true,
+                        enableRLE: true,
+                        returnString: true,
+                    });
+                localStorage.setItem(key, payload);
+                project.lastExport = { type: "string", payload };
                 project.dirty = false;
                 setBadge();
                 alert("Saved to localStorage: " + key);
@@ -933,8 +959,18 @@ function handleMenu(action) {
             setBadge();
             const key = "ts_save_" + n;
             try {
-                if (!project.lastExport) throw new Error();
-                localStorage.setItem(key, project.lastExport.payload || "");
+                const payload =
+                    "ts1|" +
+                    encodeOnce({
+                        colorMode: modeFromPref(),
+                        enablePatterns: true,
+                        enableRowRepeat: true,
+                        enableCopy: true,
+                        enableRLE: true,
+                        returnString: true,
+                    });
+                localStorage.setItem(key, payload);
+                project.lastExport = { type: "string", payload };
                 project.dirty = false;
                 setBadge();
                 alert("Saved as " + key);
@@ -1183,7 +1219,7 @@ function undo() {
     h.redo.push(cur);
     project.layer = e.layer;
     project.layers[project.layer] = cloneIndices(e.indices);
-    renderFrames();
+    renderLayers();
     draw();
 }
 function redo() {
@@ -1194,7 +1230,7 @@ function redo() {
     h.undo.push(cur);
     project.layer = e.layer;
     project.layers[project.layer] = cloneIndices(e.indices);
-    renderFrames();
+    renderLayers();
     draw();
 }
 
