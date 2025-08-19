@@ -306,6 +306,9 @@ dialog::backdrop {
 #layersList .item span {
     margin-right: 6px;
 }
+#framesList .item span {
+    margin-right: 6px;
+}
 
 /* Tiny badges */
 .pill {
