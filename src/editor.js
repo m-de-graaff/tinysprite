@@ -903,9 +903,7 @@ function handleMenu(action) {
             selectProject(p);
         },
         openDoc: () => {
-            const s = prompt("Paste ts1|string:");
-            if (!s) return;
-            importString(s.trim());
+            document.getElementById("fileImg").click();
         },
         openRecent: () => openRecent(),
         save: () => {
@@ -1231,40 +1229,43 @@ function importString(s, name) {
     return p;
 }
 
-// File input direct .tspr reader
+// File input for opening .tspr or PNG files
 document.getElementById("fileImg").addEventListener("change", async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    if (f.name.endsWith(".tspr")) {
-        const ab = await f.arrayBuffer();
-        const bytes = new Uint8Array(ab);
-        const s = "ts1|" + toB64Url(bytes);
-        importString(s, f.name);
-    } else {
-        const img = new Image();
-        img.src = URL.createObjectURL(f);
-        await img.decode();
-        const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
-        const cx = c.getContext("2d");
-        cx.drawImage(img, 0, 0);
-        const w = c.width,
-            h = c.height;
-        const rgba = cx.getImageData(0, 0, w, h).data;
-        const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
-        const dec = TS.decode(bytes);
-        const p = createProject(f.name);
-        p.w = w;
-        p.h = h;
-        p.layers = [dec.indices];
-        p.layer = 0;
-        p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
-        projects.push(p);
-        selectProject(p);
-        updateStats(bytes);
-        URL.revokeObjectURL(img.src);
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    for (const f of files) {
+        if (f.name.endsWith(".tspr")) {
+            const ab = await f.arrayBuffer();
+            const bytes = new Uint8Array(ab);
+            const s = "ts1|" + toB64Url(bytes);
+            importString(s, f.name);
+        } else {
+            const img = new Image();
+            img.src = URL.createObjectURL(f);
+            await img.decode();
+            const c = document.createElement("canvas");
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            const cx = c.getContext("2d");
+            cx.drawImage(img, 0, 0);
+            const w = c.width,
+                h = c.height;
+            const rgba = cx.getImageData(0, 0, w, h).data;
+            const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
+            const dec = TS.decode(bytes);
+            const p = createProject(f.name);
+            p.w = w;
+            p.h = h;
+            p.layers = [dec.indices];
+            p.layer = 0;
+            p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+            projects.push(p);
+            selectProject(p);
+            updateStats(bytes);
+            URL.revokeObjectURL(img.src);
+        }
     }
+    e.target.value = "";
 });
 
 // Export sheet/tileset via menu only; still accessible
