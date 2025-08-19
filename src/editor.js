@@ -21,8 +21,9 @@ const FILEBADGE = document.getElementById("fileBadge");
 const SIZEBADGE = document.getElementById("sizeBadge");
 const PREVIEW = document.getElementById("preview");
 const PCTX = PREVIEW.getContext("2d", { alpha: true, willReadFrequently: true });
+const MAIN = document.getElementById("main");
 
-TRANS.onchange = () => (project.transparencyIndex = Number(TRANS.value) | 0);
+TRANS.onchange = () => project && (project.transparencyIndex = Number(TRANS.value) | 0);
 
 // Optimizer UI
 const OPT = {
@@ -42,6 +43,7 @@ const OPT = {
 
 const DOC_TABS = document.getElementById("docTabs");
 const projects = [];
+let project = null;
 let untitledCounter = 1;
 function nextUntitled() {
     let name;
@@ -76,16 +78,22 @@ function createProject(name = nextUntitled()) {
         lastExport: null, // {type, bytes|string, params}
         history: { undo: [], redo: [] },
         transparencyIndex: -1,
+        dirty: true,
     };
 }
-
-let project = createProject();
-projects.push(project);
 
 function selectProject(p) {
     // save transparency index of current project
     if (project) project.transparencyIndex = Number(TRANS.value) | 0;
     project = p;
+    if (!project) {
+        MAIN.style.display = "none";
+        FILEBADGE.textContent = "";
+        SIZEBADGE.textContent = "–";
+        refreshTabs();
+        return;
+    }
+    MAIN.style.display = "";
     W.value = project.w;
     H.value = project.h;
     resizeCanvas();
@@ -108,13 +116,8 @@ function closeProject(p) {
     if (idx === -1) return;
     projects.splice(idx, 1);
     if (project === p) {
-        const next = projects[idx] || projects[idx - 1];
-        if (next) selectProject(next);
-    }
-    if (projects.length === 0) {
-        const np = createProject();
-        projects.push(np);
-        selectProject(np);
+        const next = projects[idx] || projects[idx - 1] || null;
+        selectProject(next);
     }
     refreshTabs();
 }
@@ -160,7 +163,7 @@ function refreshTabs() {
     projects.forEach((p, i) => {
         const tab = document.createElement("div");
         tab.className = "doc-tab" + (p === project ? " active" : "");
-        tab.textContent = p.name;
+        tab.textContent = p.name + (p.dirty ? " *" : "");
         tab.dataset.idx = String(i);
         const close = document.createElement("span");
         close.className = "close";
@@ -170,7 +173,7 @@ function refreshTabs() {
     });
 }
 function setBadge() {
-    FILEBADGE.textContent = project.name;
+    FILEBADGE.textContent = project ? project.name + (project.dirty ? "*" : "") : "";
     refreshTabs();
 }
 
@@ -179,9 +182,12 @@ function pushHistory(label) {
     const entry = { label, layer, indices: cloneIndices(project.layers[layer]) };
     project.history.undo.push(entry);
     project.history.redo.length = 0;
+    project.dirty = true;
+    setBadge();
     refreshHistoryBadge();
 }
 function refreshHistoryBadge() {
+    if (!project) return;
     SIZEBADGE.textContent = `layers:${project.layers.length} • ${project.w}×${project.h}`;
 }
 
@@ -581,11 +587,12 @@ document.getElementById("btnFlipV").onclick = () => {
 };
 
 Z.oninput = () => {
+    if (!project) return;
     project.zoom = Number(Z.value);
     ZV.textContent = String(project.zoom);
     resizeCanvas();
 };
-GRID.onchange = draw;
+GRID.onchange = () => project && draw();
 
 document.getElementById("btnAddColor").onclick = () => {
     project.palette.push([255, 255, 255]);
@@ -896,6 +903,8 @@ document.addEventListener("click", (e) => {
     if (!e.target.closest("#menubar")) closeAllMenus();
 });
 function handleMenu(action) {
+    const projectless = new Set(["newDoc", "openDoc", "openRecent"]);
+    if (!project && !projectless.has(action)) return;
     const map = {
         newDoc: () => {
             const p = createProject();
@@ -911,6 +920,8 @@ function handleMenu(action) {
                 if (!project.lastExport) throw new Error();
                 const key = "ts_save_" + project.name;
                 localStorage.setItem(key, project.lastExport.payload || "");
+                project.dirty = false;
+                setBadge();
                 alert("Saved to localStorage: " + key);
             } catch (e) {
                 alert("Save failed");
@@ -924,6 +935,8 @@ function handleMenu(action) {
             try {
                 if (!project.lastExport) throw new Error();
                 localStorage.setItem(key, project.lastExport.payload || "");
+                project.dirty = false;
+                setBadge();
                 alert("Saved as " + key);
             } catch (e) {
                 alert("Save failed");
@@ -957,9 +970,7 @@ function handleMenu(action) {
         closeAll: () => {
             if (confirm("Close ALL (reset)?")) {
                 projects.splice(0, projects.length);
-                const np = createProject();
-                projects.push(np);
-                selectProject(np);
+                selectProject(null);
                 refreshTabs();
             }
         },
@@ -1222,6 +1233,7 @@ function importString(s, name) {
     p.layer = 0;
     p.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
     p.transparencyIndex = dec.transparencyIndex ?? -1;
+    p.dirty = false;
     projects.push(p);
     selectProject(p);
     updateStats(str);
@@ -1259,6 +1271,7 @@ document.getElementById("fileImg").addEventListener("change", async (e) => {
             p.layers = [dec.indices];
             p.layer = 0;
             p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+            p.dirty = false;
             projects.push(p);
             selectProject(p);
             updateStats(bytes);
@@ -1297,6 +1310,7 @@ document.getElementById("btnOptClose").onclick = () => document.getElementById("
     * Keyboard shortcuts
     * -----------------------------------------------------*/
 document.addEventListener("keydown", (e) => {
+    if (!project && !(e.ctrlKey && (e.key === "o" || e.key === "n"))) return;
     if (e.ctrlKey && e.key === "s") {
         e.preventDefault();
         handleMenu("save");
