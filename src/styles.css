@@ -303,6 +303,10 @@ dialog::backdrop {
     background: var(--panel-2);
 }
 
+#layersList .item span {
+    margin-right: 6px;
+}
+
 /* Tiny badges */
 .pill {
     padding: 2px 6px;

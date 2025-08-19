@@ -59,7 +59,13 @@ function createProject(name = nextUntitled()) {
         name,
         w: 12,
         h: 12,
-        layers: [new Uint8Array(12 * 12)], // array of indices per layer
+        layers: [
+            {
+                name: "Layer 1",
+                visible: true,
+                indices: new Uint8Array(12 * 12),
+            },
+        ],
         layer: 0,
         palette: [
             [0, 0, 0],
@@ -179,7 +185,11 @@ function setBadge() {
 
 function pushHistory(label) {
     const layer = project.layer;
-    const entry = { label, layer, indices: cloneIndices(project.layers[layer]) };
+    const entry = {
+        label,
+        layer,
+        indices: cloneIndices(project.layers[layer].indices),
+    };
     project.history.undo.push(entry);
     project.history.redo.length = 0;
     project.dirty = true;
@@ -219,9 +229,11 @@ function draw() {
             CTX.fillRect(x, y, 12, 12);
         }
     }
-    // pixels from all layers
+    // pixels from all visible layers
     for (let l = 0; l < project.layers.length; l++) {
-        const data = project.layers[l];
+        const layer = project.layers[l];
+        if (!layer.visible) continue;
+        const data = layer.indices;
         for (let y = 0; y < project.h; y++) {
             for (let x = 0; x < project.w; x++) {
                 const idx = data[iyx(x, y)];
@@ -271,7 +283,9 @@ function drawPreview() {
     PCTX.clearRect(0, 0, PREVIEW.width, PREVIEW.height);
     PCTX.imageSmoothingEnabled = false;
     for (let l = 0; l < project.layers.length; l++) {
-        const data = project.layers[l];
+        const layer = project.layers[l];
+        if (!layer.visible) continue;
+        const data = layer.indices;
         for (let y = 0; y < project.h; y++) {
             for (let x = 0; x < project.w; x++) {
                 const idx = data[iyx(x, y)];
@@ -411,14 +425,14 @@ function selectFinalize() {
 
 function previewLine(a, b) {
     if (!a) return;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     const temp = cloneIndices(d);
     plotLine(temp, a.x, a.y, b.x, b.y, project.active);
     blit(temp);
 }
 
 function blit(src) {
-    const dst = project.layers[project.layer];
+    const dst = project.layers[project.layer].indices;
     dst.set(src);
 }
 
@@ -458,7 +472,7 @@ function putBrush(buf, x, y, v) {
 }
 
 function doPaint(x, y) {
-    const data = project.layers[project.layer];
+    const data = project.layers[project.layer].indices;
     const t = project.tool;
     const v = project.active;
     if (t === "pen") {
@@ -479,7 +493,7 @@ function floodFill(x, y, target, repl) {
     const st = [[x, y]],
         Wd = project.w,
         Hd = project.h,
-        d = project.layers[project.layer];
+        d = project.layers[project.layer].indices;
     while (st.length) {
         const [cx, cy] = st.pop();
         const idx = iyx(cx, cy);
@@ -498,15 +512,29 @@ function floodFill(x, y, target, repl) {
 const layersList = document.getElementById("layersList");
 document.getElementById("addLayer").onclick = () => {
     pushHistory("add layer");
-    project.layers.push(cloneIndices(project.layers[project.layer]));
+    const name = `Layer ${project.layers.length + 1}`;
+    project.layers.push({
+        name,
+        visible: true,
+        indices: cloneIndices(project.layers[project.layer].indices),
+    });
     project.layer = project.layers.length - 1;
+    project.dirty = true;
+    setBadge();
     renderLayers();
     draw();
 };
 document.getElementById("dupLayer").onclick = () => {
     pushHistory("dup layer");
-    project.layers.splice(project.layer + 1, 0, cloneIndices(project.layers[project.layer]));
+    const base = project.layers[project.layer];
+    project.layers.splice(project.layer + 1, 0, {
+        name: base.name + " copy",
+        visible: base.visible,
+        indices: cloneIndices(base.indices),
+    });
     project.layer++;
+    project.dirty = true;
+    setBadge();
     renderLayers();
     draw();
 };
@@ -515,17 +543,77 @@ document.getElementById("delLayer").onclick = () => {
     pushHistory("del layer");
     project.layers.splice(project.layer, 1);
     project.layer = Math.max(0, project.layer - 1);
+    project.dirty = true;
+    setBadge();
     renderLayers();
     draw();
 };
 
 function renderLayers() {
     layersList.innerHTML = "";
-    project.layers.forEach((_, i) => {
+    project.layers.forEach((layer, i) => {
         const item = document.createElement("div");
         item.className = "item";
-        item.textContent = `Layer ${i + 1}`;
         if (i === project.layer) item.style.outline = "1px solid #fff";
+
+        const eye = document.createElement("span");
+        eye.textContent = layer.visible ? "👁" : "🚫";
+        eye.onclick = (e) => {
+            e.stopPropagation();
+            layer.visible = !layer.visible;
+            project.dirty = true;
+            setBadge();
+            renderLayers();
+            draw();
+        };
+
+        const name = document.createElement("span");
+        name.textContent = layer.name;
+        name.style.margin = "0 4px";
+        name.ondblclick = (e) => {
+            e.stopPropagation();
+            const nn = prompt("Layer name", layer.name);
+            if (nn) {
+                layer.name = nn;
+                project.dirty = true;
+                setBadge();
+                renderLayers();
+            }
+        };
+
+        const up = document.createElement("span");
+        up.textContent = "↑";
+        up.onclick = (e) => {
+            e.stopPropagation();
+            if (i > 0) {
+                [project.layers[i - 1], project.layers[i]] = [project.layers[i], project.layers[i - 1]];
+                project.layer = i - 1;
+                project.dirty = true;
+                setBadge();
+                renderLayers();
+                draw();
+            }
+        };
+
+        const down = document.createElement("span");
+        down.textContent = "↓";
+        down.onclick = (e) => {
+            e.stopPropagation();
+            if (i < project.layers.length - 1) {
+                [project.layers[i], project.layers[i + 1]] = [project.layers[i + 1], project.layers[i]];
+                project.layer = i + 1;
+                project.dirty = true;
+                setBadge();
+                renderLayers();
+                draw();
+            }
+        };
+
+        item.appendChild(eye);
+        item.appendChild(name);
+        item.appendChild(up);
+        item.appendChild(down);
+
         item.onclick = () => {
             project.layer = i;
             renderLayers();
@@ -553,7 +641,10 @@ function syncDims() {
         pushHistory("resize");
         project.w = nw;
         project.h = nh;
-        project.layers = project.layers.map((_) => new Uint8Array(nw * nh));
+        project.layers = project.layers.map((l) => ({
+            ...l,
+            indices: new Uint8Array(nw * nh),
+        }));
     }
     resizeCanvas();
     draw();
@@ -564,13 +655,13 @@ document.getElementById("btnResize").onclick = syncDims;
 document.getElementById("btnClear").onclick = () => {
     pushHistory("clear");
     const tVal = Number.isFinite(Number(TRANS.value)) ? Number(TRANS.value) | 0 : -1;
-    project.layers[project.layer].fill(tVal >= 0 ? tVal : 0);
+    project.layers[project.layer].indices.fill(tVal >= 0 ? tVal : 0);
     draw();
 };
 document.getElementById("btnFlipH").onclick = () => {
     pushHistory("flipH");
     const { w, h } = project;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     for (let y = 0; y < h; y++) {
         for (let x = 0; (x < w / 2) | 0; x++) {
             const a = iyx(x, y),
@@ -585,7 +676,7 @@ document.getElementById("btnFlipH").onclick = () => {
 document.getElementById("btnFlipV").onclick = () => {
     pushHistory("flipV");
     const { w, h } = project;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     for (let y = 0; (y < h / 2) | 0; y++) {
         for (let x = 0; x < w; x++) {
             const a = iyx(x, y),
@@ -628,7 +719,7 @@ document.getElementById("btnTrans").onclick = () => {
     * Encoding / Optimizer
     * -----------------------------------------------------*/
 function gatherIndices() {
-    return project ? project.layers[project.layer] : new Uint8Array();
+    return project ? project.layers[project.layer].indices : new Uint8Array();
 }
 function gatherPalette() {
     return project ? project.palette.map(([r, g, b]) => ({ r, g, b })) : [];
@@ -813,17 +904,17 @@ function savePNG(canvas, name) {
 }
 
 function exportSpriteSheet() {
-    const layers = project.layers;
+    const layers = project.layers.filter((l) => l.visible);
     const px = 1;
     const c = document.createElement("canvas");
     c.width = project.w * layers.length;
     c.height = project.h;
     const cx = c.getContext("2d");
-    for (let f = 0; f < layers.length; f++) drawLayerTo(cx, layers[f], f * project.w, 0);
+    for (let f = 0; f < layers.length; f++) drawLayerTo(cx, layers[f].indices, f * project.w, 0);
     savePNG(c, `${project.name.replace(/\.[^.]+$/, "")}_sheet.png`);
 }
 function exportTileset(cols = 4) {
-    const layers = project.layers;
+    const layers = project.layers.filter((l) => l.visible);
     const rows = Math.ceil(layers.length / cols);
     const c = document.createElement("canvas");
     c.width = project.w * cols;
@@ -832,7 +923,7 @@ function exportTileset(cols = 4) {
     for (let i = 0; i < layers.length; i++) {
         const x = (i % cols) * project.w,
             y = Math.floor(i / cols) * project.h;
-        drawLayerTo(cx, layers[i], x, y);
+        drawLayerTo(cx, layers[i].indices, x, y);
     }
     savePNG(c, `${project.name.replace(/\.[^.]+$/, "")}_tileset.png`);
 }
@@ -965,7 +1056,9 @@ function handleMenu(action) {
                             const p = createProject(h.name.replace(/\.png$/i, ".tspr"));
                             p.w = c.width;
                             p.h = c.height;
-                            p.layers = [dec.indices];
+                            p.layers = [
+                                { name: "Layer 1", visible: true, indices: dec.indices },
+                            ];
                             p.layer = 0;
                             p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
                             p.dirty = false;
@@ -1126,7 +1219,7 @@ function regionIter(sel, fn) {
 function getSelData() {
     const sel = ensureSel();
     const data = new Uint8Array(sel.w * sel.h);
-    const src = project.layers[project.layer];
+    const src = project.layers[project.layer].indices;
     let k = 0;
     regionIter(sel, (x, y) => {
         data[k++] = src[iyx(x, y)];
@@ -1135,7 +1228,7 @@ function getSelData() {
 }
 function putSelData(sel, data, dx, dy) {
     const src = data;
-    const dst = project.layers[project.layer];
+    const dst = project.layers[project.layer].indices;
     let k = 0;
     for (let y = 0; y < sel.h; y++)
         for (let x = 0; x < sel.w; x++) {
@@ -1154,7 +1247,7 @@ function cutSel() {
     const { sel, data } = getSelData();
     clipboard = { w: sel.w, h: sel.h, data };
     regionIter(sel, (x, y) => {
-        project.layers[project.layer][iyx(x, y)] = Number(TRANS.value) | 0;
+        project.layers[project.layer].indices[iyx(x, y)] = Number(TRANS.value) | 0;
     });
     draw();
 }
@@ -1167,7 +1260,10 @@ async function copyMergedPNG() {
     c.width = project.w;
     c.height = project.h;
     const cx = c.getContext("2d");
-    drawLayerTo(cx, project.layers[project.layer], 0, 0);
+    for (const layer of project.layers) {
+        if (!layer.visible) continue;
+        drawLayerTo(cx, layer.indices, 0, 0);
+    }
     const blob = await new Promise((res) => c.toBlob(res));
     try {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -1192,7 +1288,7 @@ function deleteSel() {
     pushHistory("delete");
     const tidx = Number(TRANS.value) | 0;
     regionIter(project.selection, (x, y) => {
-        project.layers[project.layer][iyx(x, y)] = tidx >= 0 ? tidx : 0;
+        project.layers[project.layer].indices[iyx(x, y)] = tidx >= 0 ? tidx : 0;
     });
     draw();
 }
@@ -1200,7 +1296,7 @@ function strokeSel() {
     if (!project.selection) return;
     pushHistory("stroke");
     const s = project.selection;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     const v = project.active;
     for (let x = s.x; x < s.x + s.w; x++) {
         d[iyx(x, s.y)] = v;
@@ -1226,7 +1322,7 @@ function rotate180() {
     rotateGeneric(2);
 }
 function rotateGeneric(times) {
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     let w = project.w,
         h = project.h;
     for (let t = 0; t < times; t++) {
@@ -1237,7 +1333,7 @@ function rotateGeneric(times) {
                     ny = x;
                 out[ny * h + nx] = d[iyx(x, y)];
             }
-        project.layers[project.layer] = out;
+        project.layers[project.layer].indices = out;
         const tmp = w;
         w = h;
         h = tmp;
@@ -1258,7 +1354,7 @@ function shiftPrompt() {
 function shift(dx, dy) {
     pushHistory("shift");
     const { w, h } = project;
-    const src = project.layers[project.layer];
+    const src = project.layers[project.layer].indices;
     const out = new Uint8Array(w * h);
     for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
@@ -1266,7 +1362,7 @@ function shift(dx, dy) {
                 ny = (y + (dy % h) + h) % h;
             out[iyx(nx, ny)] = src[iyx(x, y)];
         }
-    project.layers[project.layer] = out;
+    project.layers[project.layer].indices = out;
     draw();
 }
 
@@ -1274,10 +1370,14 @@ function undo() {
     const h = project.history;
     const e = h.undo.pop();
     if (!e) return;
-    const cur = { label: "undo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
+    const cur = {
+        label: "undo-back",
+        layer: project.layer,
+        indices: cloneIndices(project.layers[project.layer].indices),
+    };
     h.redo.push(cur);
     project.layer = e.layer;
-    project.layers[project.layer] = cloneIndices(e.indices);
+    project.layers[project.layer].indices = cloneIndices(e.indices);
     renderLayers();
     draw();
 }
@@ -1285,10 +1385,14 @@ function redo() {
     const h = project.history;
     const e = h.redo.pop();
     if (!e) return;
-    const cur = { label: "redo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
+    const cur = {
+        label: "redo-back",
+        layer: project.layer,
+        indices: cloneIndices(project.layers[project.layer].indices),
+    };
     h.undo.push(cur);
     project.layer = e.layer;
-    project.layers[project.layer] = cloneIndices(e.indices);
+    project.layers[project.layer].indices = cloneIndices(e.indices);
     renderLayers();
     draw();
 }
@@ -1306,7 +1410,7 @@ function showHistory() {
             it.className = "item";
             it.textContent = e.label;
             it.onclick = () => {
-                project.layers[project.layer] = cloneIndices(e.indices);
+                project.layers[project.layer].indices = cloneIndices(e.indices);
                 draw();
             };
             list.appendChild(it);
@@ -1324,7 +1428,9 @@ function importString(s, name, fileHandle = null) {
     const p = createProject(name);
     p.w = dec.width;
     p.h = dec.height;
-    p.layers = [dec.indices];
+    p.layers = [
+        { name: "Layer 1", visible: true, indices: dec.indices },
+    ];
     p.layer = 0;
     p.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
     p.transparencyIndex = dec.transparencyIndex ?? -1;
@@ -1364,7 +1470,9 @@ document.getElementById("fileImg").addEventListener("change", async (e) => {
             const p = createProject(f.name);
             p.w = w;
             p.h = h;
-            p.layers = [dec.indices];
+            p.layers = [
+                { name: "Layer 1", visible: true, indices: dec.indices },
+            ];
             p.layer = 0;
             p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
             p.dirty = false;
