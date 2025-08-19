@@ -115,6 +115,8 @@ main {
     grid-template-columns: 280px 1fr 320px;
     gap: 12px;
     padding: 12px;
+    height: calc(100vh - 68px);
+    overflow: hidden;
 }
 .card {
     background: var(--panel);
@@ -330,4 +332,32 @@ dialog::backdrop {
 }
 .tab-pane.active {
     display: block;
+}
+
+/* Document tabs */
+.doc-tabs {
+    display: flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    height: 32px;
+}
+.doc-tab {
+    padding: 6px 12px;
+    background: var(--panel-2);
+    border-right: 1px solid var(--line);
+    color: var(--fg);
+    cursor: pointer;
+}
+.doc-tab.active {
+    background: var(--panel-3);
+}
+
+#previewWrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+#preview {
+    image-rendering: pixelated;
 }
