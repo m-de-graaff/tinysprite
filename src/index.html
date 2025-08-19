@@ -85,6 +85,8 @@
                     <div class="mi" data-action="layersNew">New Layer</div>
                     <div class="mi" data-action="layersDel">Delete Layer</div>
                     <div class="mi" data-action="layersDup">Duplicate Layer</div>
+                    <div class="mi" data-action="layersRen">Rename Layer</div>
+                    <div class="mi" data-action="layersMerge">Merge Down</div>
                     <div class="mi" data-action="optimizer">Optimizer…</div>
                 </div>
             </div>
@@ -106,7 +108,7 @@
         <div id="docTabs" class="doc-tabs"></div>
 
         <!-- ===== Main ===== -->
-        <main>
+        <main id="main" style="display: none;">
             <!-- Left: Tools, Palette & Layers -->
             <section class="card">
                 <h2>Tools</h2>
@@ -159,6 +161,10 @@
                         <button id="dupLayer" class="btn">Duplicate</button>
                         <button id="delLayer" class="btn">Delete</button>
                     </div>
+                    <div class="row">
+                        <button id="renLayer" class="btn">Rename</button>
+                        <button id="mergeLayer" class="btn">Merge Down</button>
+                    </div>
                     <div id="layersList" class="list"></div>
                 </div>
             </section>
@@ -176,7 +182,7 @@
                         <input id="w" type="number" min="1" value="12" class="field" />×<input id="h" type="number" min="1" value="12" class="field" />
                         <button id="btnResize" class="btn">Resize</button>
                         <label>Transparency index</label>
-                        <input id="transIdx" type="number" value="-1" class="field mono" style="width: 80px;" />
+                        <input id="transIdx" type="number" value="0" class="field mono" style="width: 80px;" />
                     </div>
                 </div>
             </section>
@@ -185,6 +191,27 @@
         <h2>Preview</h2>
         <div class="body" id="previewWrap">
             <canvas id="preview" width="96" height="96"></canvas>
+        </div>
+        <div class="body">
+            <div class="row">
+                <button id="playAnim" class="btn">Play</button>
+                <label>FPS</label>
+                <input id="fps" type="number" value="12" class="field mono" style="width: 60px;" />
+                <button id="addFrame" class="btn">Add Frame</button>
+                <button id="delFrame" class="btn">Delete Frame</button>
+            </div>
+            <div id="framesList" class="list"></div>
+        </div>
+        <h2>Tileset</h2>
+        <div class="body" id="tilesetWrap">
+            <canvas id="tileset" width="128" height="128"></canvas>
+        </div>
+        <div class="body">
+            <div class="row">
+                <label>Cols</label>
+                <input id="tileCols" type="number" value="4" class="field mono" style="width: 60px;" />
+                <button id="btnExportTileset" class="btn">Export</button>
+            </div>
         </div>
     </section>
         </main>

@@ -21,8 +21,12 @@ const FILEBADGE = document.getElementById("fileBadge");
 const SIZEBADGE = document.getElementById("sizeBadge");
 const PREVIEW = document.getElementById("preview");
 const PCTX = PREVIEW.getContext("2d", { alpha: true, willReadFrequently: true });
+const MAIN = document.getElementById("main");
+const TILESET = document.getElementById("tileset");
+const TCTX = TILESET.getContext("2d", { alpha: true, willReadFrequently: true });
+const TILECOLS = document.getElementById("tileCols");
 
-TRANS.onchange = () => (project.transparencyIndex = Number(TRANS.value) | 0);
+TRANS.onchange = () => project && (project.transparencyIndex = Number(TRANS.value) | 0);
 
 // Optimizer UI
 const OPT = {
@@ -42,6 +46,7 @@ const OPT = {
 
 const DOC_TABS = document.getElementById("docTabs");
 const projects = [];
+let project = null;
 let untitledCounter = 1;
 function nextUntitled() {
     let name;
@@ -53,11 +58,27 @@ function nextUntitled() {
 
 // Project helpers
 function createProject(name = nextUntitled()) {
-    return {
+    const w = 12,
+        h = 12,
+        transparencyIndex = 0;
+    const p = {
         name,
-        w: 12,
-        h: 12,
-        layers: [new Uint8Array(12 * 12)], // array of indices per layer
+        w,
+        h,
+        frames: [
+            {
+                name: "Frame 1",
+                duration: 100,
+                layers: [
+                    {
+                        name: "Layer 1",
+                        visible: true,
+                        indices: new Uint8Array(w * h).fill(transparencyIndex),
+                    },
+                ],
+            },
+        ],
+        frame: 0,
         layer: 0,
         palette: [
             [0, 0, 0],
@@ -75,17 +96,37 @@ function createProject(name = nextUntitled()) {
         preferredColorMode: "auto",
         lastExport: null, // {type, bytes|string, params}
         history: { undo: [], redo: [] },
-        transparencyIndex: -1,
+        transparencyIndex,
+        dirty: true,
+        fileHandle: null,
+        tilesetCols: 4,
     };
+    Object.defineProperty(p, "layers", {
+        get() {
+            return p.frames[p.frame].layers;
+        },
+        set(v) {
+            p.frames[p.frame].layers = v;
+        },
+    });
+    return p;
 }
-
-let project = createProject();
-projects.push(project);
 
 function selectProject(p) {
     // save transparency index of current project
     if (project) project.transparencyIndex = Number(TRANS.value) | 0;
+    stopAnimation();
     project = p;
+    if (!project) {
+        MAIN.style.display = "none";
+        FILEBADGE.textContent = "";
+        SIZEBADGE.textContent = "–";
+        framesList.innerHTML = "";
+        drawTileset();
+        refreshTabs();
+        return;
+    }
+    MAIN.style.display = "";
     W.value = project.w;
     H.value = project.h;
     resizeCanvas();
@@ -95,9 +136,10 @@ function selectProject(p) {
     brushShapeEl.value = project.brushShape;
     toolsEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.tool === project.tool));
     TRANS.value = String(project.transparencyIndex);
+    TILECOLS.value = project.tilesetCols;
     renderPalette();
-    renderLayers();
     renderFrames();
+    renderLayers();
     draw();
     setBadge();
     refreshHistoryBadge();
@@ -108,13 +150,8 @@ function closeProject(p) {
     if (idx === -1) return;
     projects.splice(idx, 1);
     if (project === p) {
-        const next = projects[idx] || projects[idx - 1];
-        if (next) selectProject(next);
-    }
-    if (projects.length === 0) {
-        const np = createProject();
-        projects.push(np);
-        selectProject(np);
+        const next = projects[idx] || projects[idx - 1] || null;
+        selectProject(next);
     }
     refreshTabs();
 }
@@ -160,7 +197,7 @@ function refreshTabs() {
     projects.forEach((p, i) => {
         const tab = document.createElement("div");
         tab.className = "doc-tab" + (p === project ? " active" : "");
-        tab.textContent = p.name;
+        tab.textContent = p.name + (p.dirty ? " *" : "");
         tab.dataset.idx = String(i);
         const close = document.createElement("span");
         close.className = "close";
@@ -170,19 +207,28 @@ function refreshTabs() {
     });
 }
 function setBadge() {
-    FILEBADGE.textContent = project.name;
+    FILEBADGE.textContent = project ? project.name + (project.dirty ? "*" : "") : "";
     refreshTabs();
 }
 
 function pushHistory(label) {
-    const layer = project.layer;
-    const entry = { label, layer, indices: cloneIndices(project.layers[layer]) };
+    const frame = project.frame,
+        layer = project.layer;
+    const entry = {
+        label,
+        frame,
+        layer,
+        indices: cloneIndices(project.layers[layer].indices),
+    };
     project.history.undo.push(entry);
     project.history.redo.length = 0;
+    project.dirty = true;
+    setBadge();
     refreshHistoryBadge();
 }
 function refreshHistoryBadge() {
-    SIZEBADGE.textContent = `layers:${project.layers.length} • ${project.w}×${project.h}`;
+    if (!project) return;
+    SIZEBADGE.textContent = `frames:${project.frames.length} • layers:${project.layers.length} • ${project.w}×${project.h}`;
 }
 
 /* -------------------------------------------------------
@@ -213,9 +259,11 @@ function draw() {
             CTX.fillRect(x, y, 12, 12);
         }
     }
-    // pixels from all layers
+    // pixels from all visible layers
     for (let l = 0; l < project.layers.length; l++) {
-        const data = project.layers[l];
+        const layer = project.layers[l];
+        if (!layer.visible) continue;
+        const data = layer.indices;
         for (let y = 0; y < project.h; y++) {
             for (let x = 0; x < project.w; x++) {
                 const idx = data[iyx(x, y)];
@@ -245,6 +293,7 @@ function draw() {
     CTX.restore();
     drawSelectionBox();
     drawPreview();
+    drawTileset();
 }
 function drawSelectionBox() {
     const sel = project.selection;
@@ -265,7 +314,9 @@ function drawPreview() {
     PCTX.clearRect(0, 0, PREVIEW.width, PREVIEW.height);
     PCTX.imageSmoothingEnabled = false;
     for (let l = 0; l < project.layers.length; l++) {
-        const data = project.layers[l];
+        const layer = project.layers[l];
+        if (!layer.visible) continue;
+        const data = layer.indices;
         for (let y = 0; y < project.h; y++) {
             for (let x = 0; x < project.w; x++) {
                 const idx = data[iyx(x, y)];
@@ -276,6 +327,32 @@ function drawPreview() {
             }
         }
     }
+}
+
+function drawTileset() {
+    if (!project) {
+        TCTX.clearRect(0, 0, TILESET.width, TILESET.height);
+        return;
+    }
+    const cols = Math.max(1, Number(TILECOLS.value) | 0);
+    TILECOLS.value = String(cols);
+    project.tilesetCols = cols;
+    const frames = project.frames;
+    const rows = Math.ceil(frames.length / cols);
+    const tmp = document.createElement("canvas");
+    tmp.width = project.w * cols;
+    tmp.height = project.h * rows;
+    const cx = tmp.getContext("2d");
+    for (let i = 0; i < frames.length; i++) {
+        const x = (i % cols) * project.w;
+        const y = Math.floor(i / cols) * project.h;
+        const merged = mergeVisibleLayers(frames[i].layers);
+        drawLayerTo(cx, merged, x, y);
+    }
+    const scale = Math.min(TILESET.width / tmp.width, TILESET.height / tmp.height);
+    TCTX.clearRect(0, 0, TILESET.width, TILESET.height);
+    TCTX.imageSmoothingEnabled = false;
+    TCTX.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, tmp.width * scale, tmp.height * scale);
 }
 
 
@@ -309,6 +386,7 @@ function renderPalette() {
     * -----------------------------------------------------*/
 const toolsEl = document.getElementById("tools");
 toolsEl.addEventListener("click", (e) => {
+    if (!project) return;
     const b = e.target.closest("[data-tool]");
     if (!b) return;
     project.tool = b.dataset.tool;
@@ -317,8 +395,14 @@ toolsEl.addEventListener("click", (e) => {
 
 const brushSizeEl = document.getElementById("brushSize");
 const brushShapeEl = document.getElementById("brushShape");
-brushSizeEl.oninput = () => (project.brushSize = clamp(Number(brushSizeEl.value) | 0, 1, 16));
-brushShapeEl.onchange = () => (project.brushShape = brushShapeEl.value);
+brushSizeEl.oninput = () => {
+    if (!project) return;
+    project.brushSize = clamp(Number(brushSizeEl.value) | 0, 1, 16);
+};
+brushShapeEl.onchange = () => {
+    if (!project) return;
+    project.brushShape = brushShapeEl.value;
+};
 
 function canvasPos(e) {
     const r = CV.getBoundingClientRect();
@@ -329,6 +413,7 @@ let drawing = false,
     lineStart = null,
     selectStart = null;
 CV.addEventListener("mousedown", (e) => {
+    if (!project) return;
     const pos = canvasPos(e);
     if (!within(pos.x, pos.y)) return;
     if (project.tool === "select") {
@@ -347,12 +432,14 @@ CV.addEventListener("mousedown", (e) => {
     }
 });
 window.addEventListener("mouseup", () => {
+    if (!project) return;
     drawing = false;
     if (project.tool === "select" && selectStart) {
         selectFinalize();
     }
 });
 CV.addEventListener("mousemove", (e) => {
+    if (!project) return;
     const pos = canvasPos(e);
     if (!within(pos.x, pos.y)) return;
     if (project.tool === "select" && selectStart) {
@@ -373,6 +460,7 @@ CV.addEventListener("mousemove", (e) => {
 CV.addEventListener(
     "wheel",
     (e) => {
+        if (!project) return;
         e.preventDefault();
         if (e.deltaY < 0) handleMenu("zoomIn");
         else handleMenu("zoomOut");
@@ -394,14 +482,14 @@ function selectFinalize() {
 
 function previewLine(a, b) {
     if (!a) return;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     const temp = cloneIndices(d);
     plotLine(temp, a.x, a.y, b.x, b.y, project.active);
     blit(temp);
 }
 
 function blit(src) {
-    const dst = project.layers[project.layer];
+    const dst = project.layers[project.layer].indices;
     dst.set(src);
 }
 
@@ -441,7 +529,7 @@ function putBrush(buf, x, y, v) {
 }
 
 function doPaint(x, y) {
-    const data = project.layers[project.layer];
+    const data = project.layers[project.layer].indices;
     const t = project.tool;
     const v = project.active;
     if (t === "pen") {
@@ -462,7 +550,7 @@ function floodFill(x, y, target, repl) {
     const st = [[x, y]],
         Wd = project.w,
         Hd = project.h,
-        d = project.layers[project.layer];
+        d = project.layers[project.layer].indices;
     while (st.length) {
         const [cx, cy] = st.pop();
         const idx = iyx(cx, cy);
@@ -481,15 +569,31 @@ function floodFill(x, y, target, repl) {
 const layersList = document.getElementById("layersList");
 document.getElementById("addLayer").onclick = () => {
     pushHistory("add layer");
-    project.layers.push(cloneIndices(project.layers[project.layer]));
+    const name = `Layer ${project.layers.length + 1}`;
+    project.layers.push({
+        name,
+        visible: true,
+        indices: new Uint8Array(project.w * project.h).fill(
+            project.transparencyIndex >= 0 ? project.transparencyIndex : 0
+        ),
+    });
     project.layer = project.layers.length - 1;
+    project.dirty = true;
+    setBadge();
     renderLayers();
     draw();
 };
 document.getElementById("dupLayer").onclick = () => {
     pushHistory("dup layer");
-    project.layers.splice(project.layer + 1, 0, cloneIndices(project.layers[project.layer]));
+    const base = project.layers[project.layer];
+    project.layers.splice(project.layer + 1, 0, {
+        name: base.name + " copy",
+        visible: base.visible,
+        indices: cloneIndices(base.indices),
+    });
     project.layer++;
+    project.dirty = true;
+    setBadge();
     renderLayers();
     draw();
 };
@@ -498,17 +602,105 @@ document.getElementById("delLayer").onclick = () => {
     pushHistory("del layer");
     project.layers.splice(project.layer, 1);
     project.layer = Math.max(0, project.layer - 1);
+    project.dirty = true;
+    setBadge();
+    renderLayers();
+    draw();
+};
+document.getElementById("renLayer").onclick = () => {
+    if (!project) return;
+    const layer = project.layers[project.layer];
+    const nn = prompt("Layer name", layer.name);
+    if (nn) {
+        pushHistory("rename layer");
+        layer.name = nn;
+        project.dirty = true;
+        setBadge();
+        renderLayers();
+    }
+};
+document.getElementById("mergeLayer").onclick = () => {
+    if (!project || project.layer >= project.layers.length - 1) return;
+    pushHistory("merge layer");
+    const top = project.layers[project.layer];
+    const below = project.layers[project.layer + 1];
+    const t = Number(TRANS.value) | 0;
+    for (let i = 0; i < top.indices.length; i++) {
+        const v = top.indices[i];
+        if (v !== t) below.indices[i] = v;
+    }
+    project.layers.splice(project.layer, 1);
+    project.dirty = true;
+    setBadge();
     renderLayers();
     draw();
 };
 
 function renderLayers() {
     layersList.innerHTML = "";
-    project.layers.forEach((_, i) => {
+    project.layers.forEach((layer, i) => {
         const item = document.createElement("div");
         item.className = "item";
-        item.textContent = `Layer ${i + 1}`;
         if (i === project.layer) item.style.outline = "1px solid #fff";
+
+        const eye = document.createElement("span");
+        eye.textContent = layer.visible ? "👁" : "🚫";
+        eye.onclick = (e) => {
+            e.stopPropagation();
+            layer.visible = !layer.visible;
+            project.dirty = true;
+            setBadge();
+            renderLayers();
+            draw();
+        };
+
+        const name = document.createElement("span");
+        name.textContent = layer.name;
+        name.style.margin = "0 4px";
+        name.ondblclick = (e) => {
+            e.stopPropagation();
+            const nn = prompt("Layer name", layer.name);
+            if (nn) {
+                layer.name = nn;
+                project.dirty = true;
+                setBadge();
+                renderLayers();
+            }
+        };
+
+        const up = document.createElement("span");
+        up.textContent = "↑";
+        up.onclick = (e) => {
+            e.stopPropagation();
+            if (i > 0) {
+                [project.layers[i - 1], project.layers[i]] = [project.layers[i], project.layers[i - 1]];
+                project.layer = i - 1;
+                project.dirty = true;
+                setBadge();
+                renderLayers();
+                draw();
+            }
+        };
+
+        const down = document.createElement("span");
+        down.textContent = "↓";
+        down.onclick = (e) => {
+            e.stopPropagation();
+            if (i < project.layers.length - 1) {
+                [project.layers[i], project.layers[i + 1]] = [project.layers[i + 1], project.layers[i]];
+                project.layer = i + 1;
+                project.dirty = true;
+                setBadge();
+                renderLayers();
+                draw();
+            }
+        };
+
+        item.appendChild(eye);
+        item.appendChild(name);
+        item.appendChild(up);
+        item.appendChild(down);
+
         item.onclick = () => {
             project.layer = i;
             renderLayers();
@@ -517,6 +709,145 @@ function renderLayers() {
         layersList.appendChild(item);
     });
     refreshHistoryBadge();
+    drawTileset();
+}
+
+TILECOLS.oninput = () => {
+    if (!project) return;
+    project.tilesetCols = Math.max(1, Number(TILECOLS.value) | 0);
+    drawTileset();
+};
+document.getElementById("btnExportTileset").onclick = () => {
+    if (!project) return;
+    exportTileset(project.tilesetCols);
+};
+
+/* -------------------------------------------------------
+    * Frames panel
+    * -----------------------------------------------------*/
+const framesList = document.getElementById("framesList");
+const playBtn = document.getElementById("playAnim");
+const fpsInput = document.getElementById("fps");
+let animTimer = null;
+document.getElementById("addFrame").onclick = () => {
+    if (!project) return;
+    const base = project.frames[project.frame];
+    const newLayers = base.layers.map((l) => ({
+        name: l.name,
+        visible: l.visible,
+        indices: cloneIndices(l.indices),
+    }));
+    project.frames.splice(project.frame + 1, 0, {
+        name: `Frame ${project.frames.length + 1}`,
+        duration: base.duration,
+        layers: newLayers,
+    });
+    project.frame++;
+    project.layer = 0;
+    project.dirty = true;
+    setBadge();
+    renderFrames();
+    renderLayers();
+    draw();
+};
+document.getElementById("delFrame").onclick = () => {
+    if (!project || project.frames.length <= 1) return;
+    project.frames.splice(project.frame, 1);
+    project.frame = Math.max(0, project.frame - 1);
+    project.layer = Math.min(project.layer, project.layers.length - 1);
+    project.dirty = true;
+    setBadge();
+    renderFrames();
+    renderLayers();
+    draw();
+};
+function startAnimation() {
+    if (!project) return;
+    let f = 0;
+    const fps = Number(fpsInput.value) || 12;
+    playBtn.textContent = "Stop";
+    animTimer = setInterval(() => {
+        const cur = project.frame;
+        project.frame = f;
+        drawPreview();
+        project.frame = cur;
+        f = (f + 1) % project.frames.length;
+    }, 1000 / fps);
+}
+function stopAnimation() {
+    if (animTimer) {
+        clearInterval(animTimer);
+        animTimer = null;
+        playBtn.textContent = "Play";
+        drawPreview();
+    }
+}
+playBtn.onclick = () => {
+    if (animTimer) stopAnimation();
+    else startAnimation();
+};
+function renderFrames() {
+    framesList.innerHTML = "";
+    project.frames.forEach((frame, i) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        if (i === project.frame) item.style.outline = "1px solid #fff";
+
+        const name = document.createElement("span");
+        name.textContent = frame.name;
+        name.style.margin = "0 4px";
+        name.ondblclick = (e) => {
+            e.stopPropagation();
+            const nn = prompt("Frame name", frame.name);
+            if (nn) {
+                frame.name = nn;
+                project.dirty = true;
+                setBadge();
+                renderFrames();
+            }
+        };
+
+        const up = document.createElement("span");
+        up.textContent = "↑";
+        up.onclick = (e) => {
+            e.stopPropagation();
+            if (i > 0) {
+                [project.frames[i - 1], project.frames[i]] = [project.frames[i], project.frames[i - 1]];
+                project.frame = i - 1;
+                project.dirty = true;
+                setBadge();
+                renderFrames();
+            }
+        };
+
+        const down = document.createElement("span");
+        down.textContent = "↓";
+        down.onclick = (e) => {
+            e.stopPropagation();
+            if (i < project.frames.length - 1) {
+                [project.frames[i], project.frames[i + 1]] = [project.frames[i + 1], project.frames[i]];
+                project.frame = i + 1;
+                project.dirty = true;
+                setBadge();
+                renderFrames();
+            }
+        };
+
+        item.appendChild(name);
+        item.appendChild(up);
+        item.appendChild(down);
+        item.onclick = () => {
+            stopAnimation();
+            project.frame = i;
+            project.layer = 0;
+            renderFrames();
+            renderLayers();
+            draw();
+        };
+        framesList.appendChild(item);
+    });
+    refreshHistoryBadge();
+    drawTileset();
 }
 
 /* -------------------------------------------------------
@@ -527,6 +858,7 @@ function clampInt(v, min) {
     return !Number.isFinite(v) || v < min ? min : v | 0;
 }
 function syncDims() {
+    if (!project) return;
     const nw = clampInt(W.value, 1),
         nh = clampInt(H.value, 1);
     W.value = String(nw);
@@ -535,7 +867,14 @@ function syncDims() {
         pushHistory("resize");
         project.w = nw;
         project.h = nh;
-        project.layers = project.layers.map((_) => new Uint8Array(nw * nh));
+        for (const fr of project.frames) {
+            fr.layers = fr.layers.map((l) => ({
+                ...l,
+                indices: new Uint8Array(nw * nh).fill(
+                    project.transparencyIndex >= 0 ? project.transparencyIndex : 0
+                ),
+            }));
+        }
     }
     resizeCanvas();
     draw();
@@ -546,13 +885,13 @@ document.getElementById("btnResize").onclick = syncDims;
 document.getElementById("btnClear").onclick = () => {
     pushHistory("clear");
     const tVal = Number.isFinite(Number(TRANS.value)) ? Number(TRANS.value) | 0 : -1;
-    project.layers[project.layer].fill(tVal >= 0 ? tVal : 0);
+    project.layers[project.layer].indices.fill(tVal >= 0 ? tVal : 0);
     draw();
 };
 document.getElementById("btnFlipH").onclick = () => {
     pushHistory("flipH");
     const { w, h } = project;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     for (let y = 0; y < h; y++) {
         for (let x = 0; (x < w / 2) | 0; x++) {
             const a = iyx(x, y),
@@ -567,7 +906,7 @@ document.getElementById("btnFlipH").onclick = () => {
 document.getElementById("btnFlipV").onclick = () => {
     pushHistory("flipV");
     const { w, h } = project;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     for (let y = 0; (y < h / 2) | 0; y++) {
         for (let x = 0; x < w; x++) {
             const a = iyx(x, y),
@@ -581,11 +920,12 @@ document.getElementById("btnFlipV").onclick = () => {
 };
 
 Z.oninput = () => {
+    if (!project) return;
     project.zoom = Number(Z.value);
     ZV.textContent = String(project.zoom);
     resizeCanvas();
 };
-GRID.onchange = draw;
+GRID.onchange = () => project && draw();
 
 document.getElementById("btnAddColor").onclick = () => {
     project.palette.push([255, 255, 255]);
@@ -608,11 +948,21 @@ document.getElementById("btnTrans").onclick = () => {
 /* -------------------------------------------------------
     * Encoding / Optimizer
     * -----------------------------------------------------*/
+function mergeVisibleLayers(layers) {
+    const t = Number(TRANS.value) | 0;
+    const out = new Uint8Array(project.w * project.h).fill(t);
+    for (const layer of layers) {
+        if (!layer.visible) continue;
+        const src = layer.indices;
+        for (let i = 0; i < src.length; i++) if (src[i] !== t) out[i] = src[i];
+    }
+    return out;
+}
 function gatherIndices() {
-    return project.layers[project.layer];
+    return project ? mergeVisibleLayers(project.layers) : new Uint8Array();
 }
 function gatherPalette() {
-    return project.palette.map(([r, g, b]) => ({ r, g, b }));
+    return project ? project.palette.map(([r, g, b]) => ({ r, g, b })) : [];
 }
 
 function encodeOnce(opts) {
@@ -767,6 +1117,11 @@ function modeFromPref() {
 }
 
 function updateStats(bytesOrStr, best) {
+    if (!project) {
+        STATS.textContent = "";
+        SIZEBADGE.textContent = "–";
+        return;
+    }
     const b = typeof bytesOrStr === "string" ? Math.ceil((bytesOrStr.length * 3) / 4) : bytesOrStr.length;
     const unique = new Set(gatherIndices()).size;
     const bpi = Math.max(1, Math.ceil(Math.log2(Math.max(1, unique))));
@@ -789,26 +1144,29 @@ function savePNG(canvas, name) {
 }
 
 function exportSpriteSheet() {
-    const layers = project.layers;
-    const px = 1;
+    const frames = project.frames;
     const c = document.createElement("canvas");
-    c.width = project.w * layers.length;
+    c.width = project.w * frames.length;
     c.height = project.h;
     const cx = c.getContext("2d");
-    for (let f = 0; f < layers.length; f++) drawLayerTo(cx, layers[f], f * project.w, 0);
+    for (let f = 0; f < frames.length; f++) {
+        const merged = mergeVisibleLayers(frames[f].layers);
+        drawLayerTo(cx, merged, f * project.w, 0);
+    }
     savePNG(c, `${project.name.replace(/\.[^.]+$/, "")}_sheet.png`);
 }
 function exportTileset(cols = 4) {
-    const layers = project.layers;
-    const rows = Math.ceil(layers.length / cols);
+    const frames = project.frames;
+    const rows = Math.ceil(frames.length / cols);
     const c = document.createElement("canvas");
     c.width = project.w * cols;
     c.height = project.h * rows;
     const cx = c.getContext("2d");
-    for (let i = 0; i < layers.length; i++) {
+    for (let i = 0; i < frames.length; i++) {
         const x = (i % cols) * project.w,
             y = Math.floor(i / cols) * project.h;
-        drawLayerTo(cx, layers[i], x, y);
+        const merged = mergeVisibleLayers(frames[i].layers);
+        drawLayerTo(cx, merged, x, y);
     }
     savePNG(c, `${project.name.replace(/\.[^.]+$/, "")}_tileset.png`);
 }
@@ -896,35 +1254,126 @@ document.addEventListener("click", (e) => {
     if (!e.target.closest("#menubar")) closeAllMenus();
 });
 function handleMenu(action) {
+    const projectless = new Set(["newDoc", "openDoc", "openRecent"]);
+    if (!project && !projectless.has(action)) return;
     const map = {
         newDoc: () => {
             const p = createProject();
             projects.push(p);
             selectProject(p);
         },
-        openDoc: () => {
-            document.getElementById("fileImg").click();
+        openDoc: async () => {
+            try {
+                if (window.showOpenFilePicker) {
+                    const handles = await window.showOpenFilePicker({
+                        types: [
+                            {
+                                description: "TinySprite or PNG",
+                                accept: { "text/plain": [".tspr"], "image/png": [".png"] },
+                            },
+                        ],
+                        multiple: true,
+                    });
+                    for (const h of handles) {
+                        const file = await h.getFile();
+                        if (h.name.endsWith(".tspr")) {
+                            const text = await file.text();
+                            importString(text, h.name, h);
+                        } else if (h.name.endsWith(".png")) {
+                            const img = new Image();
+                            img.src = URL.createObjectURL(file);
+                            await img.decode();
+                            const c = document.createElement("canvas");
+                            c.width = img.naturalWidth;
+                            c.height = img.naturalHeight;
+                            const cx = c.getContext("2d");
+                            cx.drawImage(img, 0, 0);
+                            const rgba = cx.getImageData(0, 0, c.width, c.height).data;
+                            const bytes = TinySprites.encode({
+                                width: c.width,
+                                height: c.height,
+                                rgba,
+                                maxPalette: Number(OPT.maxPal.value) | 0,
+                            });
+                            const dec = TS.decode(bytes);
+                            const p = createProject(h.name.replace(/\.png$/i, ".tspr"));
+                            p.w = c.width;
+                            p.h = c.height;
+                            p.frames = [
+                                {
+                                    name: "Frame 1",
+                                    duration: 100,
+                                    layers: [{ name: "Layer 1", visible: true, indices: dec.indices }],
+                                },
+                            ];
+                            p.frame = 0;
+                            p.layer = 0;
+                            p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+                            p.dirty = false;
+                            projects.push(p);
+                            selectProject(p);
+                            updateStats(bytes);
+                            URL.revokeObjectURL(img.src);
+                        }
+                    }
+                } else {
+                    document.getElementById("fileImg").click();
+                }
+            } catch (e) {}
         },
         openRecent: () => openRecent(),
-        save: () => {
+        save: async () => {
             try {
-                if (!project.lastExport) throw new Error();
-                const key = "ts_save_" + project.name;
-                localStorage.setItem(key, project.lastExport.payload || "");
-                alert("Saved to localStorage: " + key);
+                if (!project.fileHandle) return handleMenu("saveAs");
+                const payload =
+                    "ts1|" +
+                    encodeOnce({
+                        colorMode: modeFromPref(),
+                        enablePatterns: true,
+                        enableRowRepeat: true,
+                        enableCopy: true,
+                        enableRLE: true,
+                        returnString: true,
+                    });
+                const writable = await project.fileHandle.createWritable();
+                await writable.write(new Blob([payload], { type: "text/plain" }));
+                await writable.close();
+                project.lastExport = { type: "string", payload };
+                project.dirty = false;
+                setBadge();
             } catch (e) {
                 alert("Save failed");
             }
         },
-        saveAs: () => {
-            const n = prompt("File name", project.name) || project.name;
-            project.name = n;
-            setBadge();
-            const key = "ts_save_" + n;
+        saveAs: async () => {
             try {
-                if (!project.lastExport) throw new Error();
-                localStorage.setItem(key, project.lastExport.payload || "");
-                alert("Saved as " + key);
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: project.name,
+                    types: [
+                        {
+                            description: "TinySprite Project",
+                            accept: { "text/plain": [".tspr"] },
+                        },
+                    ],
+                });
+                const payload =
+                    "ts1|" +
+                    encodeOnce({
+                        colorMode: modeFromPref(),
+                        enablePatterns: true,
+                        enableRowRepeat: true,
+                        enableCopy: true,
+                        enableRLE: true,
+                        returnString: true,
+                    });
+                const writable = await handle.createWritable();
+                await writable.write(new Blob([payload], { type: "text/plain" }));
+                await writable.close();
+                project.fileHandle = handle;
+                project.name = handle.name;
+                project.lastExport = { type: "string", payload };
+                project.dirty = false;
+                setBadge();
             } catch (e) {
                 alert("Save failed");
             }
@@ -939,10 +1388,7 @@ function handleMenu(action) {
             }
         },
         exportSheet: () => exportSpriteSheet(),
-        exportTileset: () => {
-            const cols = Number(prompt("Columns?", "4")) || 4;
-            exportTileset(cols);
-        },
+        exportTileset: () => exportTileset(project.tilesetCols),
         importString: () => {
             const s = prompt("Paste ts1|string:");
             if (!s) return;
@@ -957,9 +1403,7 @@ function handleMenu(action) {
         closeAll: () => {
             if (confirm("Close ALL (reset)?")) {
                 projects.splice(0, projects.length);
-                const np = createProject();
-                projects.push(np);
-                selectProject(np);
+                selectProject(null);
                 refreshTabs();
             }
         },
@@ -989,6 +1433,8 @@ function handleMenu(action) {
         layersNew: () => document.getElementById("addLayer").click(),
         layersDel: () => document.getElementById("delLayer").click(),
         layersDup: () => document.getElementById("dupLayer").click(),
+        layersRen: () => document.getElementById("renLayer").click(),
+        layersMerge: () => document.getElementById("mergeLayer").click(),
         optimizer: () => document.getElementById("dlgOptimizer").showModal(),
         zoomIn: () => {
             Z.value = String(Math.min(100, Number(Z.value) + 2));
@@ -1020,7 +1466,7 @@ function regionIter(sel, fn) {
 function getSelData() {
     const sel = ensureSel();
     const data = new Uint8Array(sel.w * sel.h);
-    const src = project.layers[project.layer];
+    const src = project.layers[project.layer].indices;
     let k = 0;
     regionIter(sel, (x, y) => {
         data[k++] = src[iyx(x, y)];
@@ -1029,7 +1475,7 @@ function getSelData() {
 }
 function putSelData(sel, data, dx, dy) {
     const src = data;
-    const dst = project.layers[project.layer];
+    const dst = project.layers[project.layer].indices;
     let k = 0;
     for (let y = 0; y < sel.h; y++)
         for (let x = 0; x < sel.w; x++) {
@@ -1048,7 +1494,7 @@ function cutSel() {
     const { sel, data } = getSelData();
     clipboard = { w: sel.w, h: sel.h, data };
     regionIter(sel, (x, y) => {
-        project.layers[project.layer][iyx(x, y)] = Number(TRANS.value) | 0;
+        project.layers[project.layer].indices[iyx(x, y)] = Number(TRANS.value) | 0;
     });
     draw();
 }
@@ -1061,7 +1507,8 @@ async function copyMergedPNG() {
     c.width = project.w;
     c.height = project.h;
     const cx = c.getContext("2d");
-    drawLayerTo(cx, project.layers[project.layer], 0, 0);
+    const merged = mergeVisibleLayers(project.layers);
+    drawLayerTo(cx, merged, 0, 0);
     const blob = await new Promise((res) => c.toBlob(res));
     try {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -1086,7 +1533,7 @@ function deleteSel() {
     pushHistory("delete");
     const tidx = Number(TRANS.value) | 0;
     regionIter(project.selection, (x, y) => {
-        project.layers[project.layer][iyx(x, y)] = tidx >= 0 ? tidx : 0;
+        project.layers[project.layer].indices[iyx(x, y)] = tidx >= 0 ? tidx : 0;
     });
     draw();
 }
@@ -1094,7 +1541,7 @@ function strokeSel() {
     if (!project.selection) return;
     pushHistory("stroke");
     const s = project.selection;
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     const v = project.active;
     for (let x = s.x; x < s.x + s.w; x++) {
         d[iyx(x, s.y)] = v;
@@ -1120,7 +1567,7 @@ function rotate180() {
     rotateGeneric(2);
 }
 function rotateGeneric(times) {
-    const d = project.layers[project.layer];
+    const d = project.layers[project.layer].indices;
     let w = project.w,
         h = project.h;
     for (let t = 0; t < times; t++) {
@@ -1131,7 +1578,7 @@ function rotateGeneric(times) {
                     ny = x;
                 out[ny * h + nx] = d[iyx(x, y)];
             }
-        project.layers[project.layer] = out;
+        project.layers[project.layer].indices = out;
         const tmp = w;
         w = h;
         h = tmp;
@@ -1152,7 +1599,7 @@ function shiftPrompt() {
 function shift(dx, dy) {
     pushHistory("shift");
     const { w, h } = project;
-    const src = project.layers[project.layer];
+    const src = project.layers[project.layer].indices;
     const out = new Uint8Array(w * h);
     for (let y = 0; y < h; y++)
         for (let x = 0; x < w; x++) {
@@ -1160,7 +1607,7 @@ function shift(dx, dy) {
                 ny = (y + (dy % h) + h) % h;
             out[iyx(nx, ny)] = src[iyx(x, y)];
         }
-    project.layers[project.layer] = out;
+    project.layers[project.layer].indices = out;
     draw();
 }
 
@@ -1168,22 +1615,36 @@ function undo() {
     const h = project.history;
     const e = h.undo.pop();
     if (!e) return;
-    const cur = { label: "undo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
+    const cur = {
+        label: "undo-back",
+        frame: project.frame,
+        layer: project.layer,
+        indices: cloneIndices(project.layers[project.layer].indices),
+    };
     h.redo.push(cur);
+    project.frame = e.frame;
     project.layer = e.layer;
-    project.layers[project.layer] = cloneIndices(e.indices);
+    project.layers[project.layer].indices = cloneIndices(e.indices);
     renderFrames();
+    renderLayers();
     draw();
 }
 function redo() {
     const h = project.history;
     const e = h.redo.pop();
     if (!e) return;
-    const cur = { label: "redo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
+    const cur = {
+        label: "redo-back",
+        frame: project.frame,
+        layer: project.layer,
+        indices: cloneIndices(project.layers[project.layer].indices),
+    };
     h.undo.push(cur);
+    project.frame = e.frame;
     project.layer = e.layer;
-    project.layers[project.layer] = cloneIndices(e.indices);
+    project.layers[project.layer].indices = cloneIndices(e.indices);
     renderFrames();
+    renderLayers();
     draw();
 }
 
@@ -1198,9 +1659,13 @@ function showHistory() {
         .forEach((e, i) => {
             const it = document.createElement("div");
             it.className = "item";
-            it.textContent = e.label;
+            it.textContent = `${e.label} (f${e.frame + 1}, l${e.layer + 1})`;
             it.onclick = () => {
-                project.layers[project.layer] = cloneIndices(e.indices);
+                project.frame = e.frame;
+                project.layer = e.layer;
+                project.layers[project.layer].indices = cloneIndices(e.indices);
+                renderFrames();
+                renderLayers();
                 draw();
             };
             list.appendChild(it);
@@ -1211,17 +1676,26 @@ function showHistory() {
 /* -------------------------------------------------------
     * Import / Export helpers
     * -----------------------------------------------------*/
-function importString(s, name) {
+function importString(s, name, fileHandle = null) {
     const str = (s || "").trim();
     if (!str) return;
     const dec = TS.decode(str);
     const p = createProject(name);
     p.w = dec.width;
     p.h = dec.height;
-    p.layers = [dec.indices];
+    p.frames = [
+        {
+            name: "Frame 1",
+            duration: 100,
+            layers: [{ name: "Layer 1", visible: true, indices: dec.indices }],
+        },
+    ];
+    p.frame = 0;
     p.layer = 0;
     p.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
     p.transparencyIndex = dec.transparencyIndex ?? -1;
+    p.dirty = false;
+    p.fileHandle = fileHandle;
     projects.push(p);
     selectProject(p);
     updateStats(str);
@@ -1256,9 +1730,17 @@ document.getElementById("fileImg").addEventListener("change", async (e) => {
             const p = createProject(f.name);
             p.w = w;
             p.h = h;
-            p.layers = [dec.indices];
+            p.frames = [
+                {
+                    name: "Frame 1",
+                    duration: 100,
+                    layers: [{ name: "Layer 1", visible: true, indices: dec.indices }],
+                },
+            ];
+            p.frame = 0;
             p.layer = 0;
             p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+            p.dirty = false;
             projects.push(p);
             selectProject(p);
             updateStats(bytes);
@@ -1297,7 +1779,11 @@ document.getElementById("btnOptClose").onclick = () => document.getElementById("
     * Keyboard shortcuts
     * -----------------------------------------------------*/
 document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.key === "s") {
+    if (!project && !(e.ctrlKey && (e.key === "o" || e.key === "n"))) return;
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleMenu("saveAs");
+    } else if (e.ctrlKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleMenu("save");
     } else if (e.ctrlKey && e.key === "o") {

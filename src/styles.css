@@ -303,6 +303,13 @@ dialog::backdrop {
     background: var(--panel-2);
 }
 
+#layersList .item span {
+    margin-right: 6px;
+}
+#framesList .item span {
+    margin-right: 6px;
+}
+
 /* Tiny badges */
 .pill {
     padding: 2px 6px;
@@ -366,5 +373,14 @@ dialog::backdrop {
     height: 100%;
 }
 #preview {
+    image-rendering: pixelated;
+}
+#tilesetWrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+#tileset {
     image-rendering: pixelated;
 }
