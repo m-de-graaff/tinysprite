@@ -55,15 +55,18 @@ function nextUntitled() {
 
 // Project helpers
 function createProject(name = nextUntitled()) {
+    const w = 12,
+        h = 12,
+        transparencyIndex = 0;
     return {
         name,
-        w: 12,
-        h: 12,
+        w,
+        h,
         layers: [
             {
                 name: "Layer 1",
                 visible: true,
-                indices: new Uint8Array(12 * 12),
+                indices: new Uint8Array(w * h).fill(transparencyIndex),
             },
         ],
         layer: 0,
@@ -83,7 +86,7 @@ function createProject(name = nextUntitled()) {
         preferredColorMode: "auto",
         lastExport: null, // {type, bytes|string, params}
         history: { undo: [], redo: [] },
-        transparencyIndex: -1,
+        transparencyIndex,
         dirty: true,
         fileHandle: null,
     };
@@ -516,7 +519,9 @@ document.getElementById("addLayer").onclick = () => {
     project.layers.push({
         name,
         visible: true,
-        indices: new Uint8Array(project.w * project.h),
+        indices: new Uint8Array(project.w * project.h).fill(
+            project.transparencyIndex >= 0 ? project.transparencyIndex : 0
+        ),
     });
     project.layer = project.layers.length - 1;
     project.dirty = true;
@@ -643,7 +648,9 @@ function syncDims() {
         project.h = nh;
         project.layers = project.layers.map((l) => ({
             ...l,
-            indices: new Uint8Array(nw * nh),
+            indices: new Uint8Array(nw * nh).fill(
+                project.transparencyIndex >= 0 ? project.transparencyIndex : 0
+            ),
         }));
     }
     resizeCanvas();
