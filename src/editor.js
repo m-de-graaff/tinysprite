@@ -79,6 +79,7 @@ function createProject(name = nextUntitled()) {
         history: { undo: [], redo: [] },
         transparencyIndex: -1,
         dirty: true,
+        fileHandle: null,
     };
 }
 
@@ -927,13 +928,62 @@ function handleMenu(action) {
             projects.push(p);
             selectProject(p);
         },
-        openDoc: () => {
-            document.getElementById("fileImg").click();
+        openDoc: async () => {
+            try {
+                if (window.showOpenFilePicker) {
+                    const handles = await window.showOpenFilePicker({
+                        types: [
+                            {
+                                description: "TinySprite or PNG",
+                                accept: { "text/plain": [".tspr"], "image/png": [".png"] },
+                            },
+                        ],
+                        multiple: true,
+                    });
+                    for (const h of handles) {
+                        const file = await h.getFile();
+                        if (h.name.endsWith(".tspr")) {
+                            const text = await file.text();
+                            importString(text, h.name, h);
+                        } else if (h.name.endsWith(".png")) {
+                            const img = new Image();
+                            img.src = URL.createObjectURL(file);
+                            await img.decode();
+                            const c = document.createElement("canvas");
+                            c.width = img.naturalWidth;
+                            c.height = img.naturalHeight;
+                            const cx = c.getContext("2d");
+                            cx.drawImage(img, 0, 0);
+                            const rgba = cx.getImageData(0, 0, c.width, c.height).data;
+                            const bytes = TinySprites.encode({
+                                width: c.width,
+                                height: c.height,
+                                rgba,
+                                maxPalette: Number(OPT.maxPal.value) | 0,
+                            });
+                            const dec = TS.decode(bytes);
+                            const p = createProject(h.name.replace(/\.png$/i, ".tspr"));
+                            p.w = c.width;
+                            p.h = c.height;
+                            p.layers = [dec.indices];
+                            p.layer = 0;
+                            p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+                            p.dirty = false;
+                            projects.push(p);
+                            selectProject(p);
+                            updateStats(bytes);
+                            URL.revokeObjectURL(img.src);
+                        }
+                    }
+                } else {
+                    document.getElementById("fileImg").click();
+                }
+            } catch (e) {}
         },
         openRecent: () => openRecent(),
-        save: () => {
+        save: async () => {
             try {
-                const key = "ts_save_" + project.name;
+                if (!project.fileHandle) return handleMenu("saveAs");
                 const payload =
                     "ts1|" +
                     encodeOnce({
@@ -944,21 +994,27 @@ function handleMenu(action) {
                         enableRLE: true,
                         returnString: true,
                     });
-                localStorage.setItem(key, payload);
+                const writable = await project.fileHandle.createWritable();
+                await writable.write(new Blob([payload], { type: "text/plain" }));
+                await writable.close();
                 project.lastExport = { type: "string", payload };
                 project.dirty = false;
                 setBadge();
-                alert("Saved to localStorage: " + key);
             } catch (e) {
                 alert("Save failed");
             }
         },
-        saveAs: () => {
-            const n = prompt("File name", project.name) || project.name;
-            project.name = n;
-            setBadge();
-            const key = "ts_save_" + n;
+        saveAs: async () => {
             try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: project.name,
+                    types: [
+                        {
+                            description: "TinySprite Project",
+                            accept: { "text/plain": [".tspr"] },
+                        },
+                    ],
+                });
                 const payload =
                     "ts1|" +
                     encodeOnce({
@@ -969,11 +1025,14 @@ function handleMenu(action) {
                         enableRLE: true,
                         returnString: true,
                     });
-                localStorage.setItem(key, payload);
+                const writable = await handle.createWritable();
+                await writable.write(new Blob([payload], { type: "text/plain" }));
+                await writable.close();
+                project.fileHandle = handle;
+                project.name = handle.name;
                 project.lastExport = { type: "string", payload };
                 project.dirty = false;
                 setBadge();
-                alert("Saved as " + key);
             } catch (e) {
                 alert("Save failed");
             }
@@ -1258,7 +1317,7 @@ function showHistory() {
 /* -------------------------------------------------------
     * Import / Export helpers
     * -----------------------------------------------------*/
-function importString(s, name) {
+function importString(s, name, fileHandle = null) {
     const str = (s || "").trim();
     if (!str) return;
     const dec = TS.decode(str);
@@ -1270,6 +1329,7 @@ function importString(s, name) {
     p.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
     p.transparencyIndex = dec.transparencyIndex ?? -1;
     p.dirty = false;
+    p.fileHandle = fileHandle;
     projects.push(p);
     selectProject(p);
     updateStats(str);
@@ -1347,7 +1407,10 @@ document.getElementById("btnOptClose").onclick = () => document.getElementById("
     * -----------------------------------------------------*/
 document.addEventListener("keydown", (e) => {
     if (!project && !(e.ctrlKey && (e.key === "o" || e.key === "n"))) return;
-    if (e.ctrlKey && e.key === "s") {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleMenu("saveAs");
+    } else if (e.ctrlKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleMenu("save");
     } else if (e.ctrlKey && e.key === "o") {
