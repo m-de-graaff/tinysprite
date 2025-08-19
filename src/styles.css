@@ -375,3 +375,12 @@ dialog::backdrop {
 #preview {
     image-rendering: pixelated;
 }
+#tilesetWrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+#tileset {
+    image-rendering: pixelated;
+}

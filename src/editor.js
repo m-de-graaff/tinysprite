@@ -22,6 +22,9 @@ const SIZEBADGE = document.getElementById("sizeBadge");
 const PREVIEW = document.getElementById("preview");
 const PCTX = PREVIEW.getContext("2d", { alpha: true, willReadFrequently: true });
 const MAIN = document.getElementById("main");
+const TILESET = document.getElementById("tileset");
+const TCTX = TILESET.getContext("2d", { alpha: true, willReadFrequently: true });
+const TILECOLS = document.getElementById("tileCols");
 
 TRANS.onchange = () => project && (project.transparencyIndex = Number(TRANS.value) | 0);
 
@@ -96,6 +99,7 @@ function createProject(name = nextUntitled()) {
         transparencyIndex,
         dirty: true,
         fileHandle: null,
+        tilesetCols: 4,
     };
     Object.defineProperty(p, "layers", {
         get() {
@@ -118,6 +122,7 @@ function selectProject(p) {
         FILEBADGE.textContent = "";
         SIZEBADGE.textContent = "–";
         framesList.innerHTML = "";
+        drawTileset();
         refreshTabs();
         return;
     }
@@ -131,6 +136,7 @@ function selectProject(p) {
     brushShapeEl.value = project.brushShape;
     toolsEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.tool === project.tool));
     TRANS.value = String(project.transparencyIndex);
+    TILECOLS.value = project.tilesetCols;
     renderPalette();
     renderFrames();
     renderLayers();
@@ -287,6 +293,7 @@ function draw() {
     CTX.restore();
     drawSelectionBox();
     drawPreview();
+    drawTileset();
 }
 function drawSelectionBox() {
     const sel = project.selection;
@@ -320,6 +327,32 @@ function drawPreview() {
             }
         }
     }
+}
+
+function drawTileset() {
+    if (!project) {
+        TCTX.clearRect(0, 0, TILESET.width, TILESET.height);
+        return;
+    }
+    const cols = Math.max(1, Number(TILECOLS.value) | 0);
+    TILECOLS.value = String(cols);
+    project.tilesetCols = cols;
+    const frames = project.frames;
+    const rows = Math.ceil(frames.length / cols);
+    const tmp = document.createElement("canvas");
+    tmp.width = project.w * cols;
+    tmp.height = project.h * rows;
+    const cx = tmp.getContext("2d");
+    for (let i = 0; i < frames.length; i++) {
+        const x = (i % cols) * project.w;
+        const y = Math.floor(i / cols) * project.h;
+        const merged = mergeVisibleLayers(frames[i].layers);
+        drawLayerTo(cx, merged, x, y);
+    }
+    const scale = Math.min(TILESET.width / tmp.width, TILESET.height / tmp.height);
+    TCTX.clearRect(0, 0, TILESET.width, TILESET.height);
+    TCTX.imageSmoothingEnabled = false;
+    TCTX.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, tmp.width * scale, tmp.height * scale);
 }
 
 
@@ -676,7 +709,18 @@ function renderLayers() {
         layersList.appendChild(item);
     });
     refreshHistoryBadge();
+    drawTileset();
 }
+
+TILECOLS.oninput = () => {
+    if (!project) return;
+    project.tilesetCols = Math.max(1, Number(TILECOLS.value) | 0);
+    drawTileset();
+};
+document.getElementById("btnExportTileset").onclick = () => {
+    if (!project) return;
+    exportTileset(project.tilesetCols);
+};
 
 /* -------------------------------------------------------
     * Frames panel
@@ -803,6 +847,7 @@ function renderFrames() {
         framesList.appendChild(item);
     });
     refreshHistoryBadge();
+    drawTileset();
 }
 
 /* -------------------------------------------------------
@@ -1343,10 +1388,7 @@ function handleMenu(action) {
             }
         },
         exportSheet: () => exportSpriteSheet(),
-        exportTileset: () => {
-            const cols = Number(prompt("Columns?", "4")) || 4;
-            exportTileset(cols);
-        },
+        exportTileset: () => exportTileset(project.tilesetCols),
         importString: () => {
             const s = prompt("Paste ts1|string:");
             if (!s) return;
