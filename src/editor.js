@@ -22,6 +22,8 @@ const SIZEBADGE = document.getElementById("sizeBadge");
 const PREVIEW = document.getElementById("preview");
 const PCTX = PREVIEW.getContext("2d", { alpha: true, willReadFrequently: true });
 
+TRANS.onchange = () => (project.transparencyIndex = Number(TRANS.value) | 0);
+
 // Optimizer UI
 const OPT = {
     autoMode: document.getElementById("optAutoMode"),
@@ -39,30 +41,95 @@ const OPT = {
 };
 
 const DOC_TABS = document.getElementById("docTabs");
+const projects = [];
+let untitledCounter = 1;
+function nextUntitled() {
+    let name;
+    do {
+        name = `untitled${untitledCounter++}.tspr`;
+    } while (projects.some((p) => p.name === name));
+    return name;
+}
 
-// Project state with layers
-const project = {
-    name: "untitled.tspr",
-    w: 12,
-    h: 12,
-    layers: [new Uint8Array(12 * 12)], // array of indices per layer
-    layer: 0,
-    palette: [
-        [0, 0, 0],
-        [255, 255, 255],
-        [255, 0, 0],
-        [0, 255, 0],
-        [0, 0, 255],
-    ],
-    active: 2,
-    tool: "pen",
-    zoom: 20,
-    brushSize: 1,
-    brushShape: "square",
-    selection: null, // {x,y,w,h}
-    preferredColorMode: "auto",
-    lastExport: null, // {type, bytes|string, params}
-};
+// Project helpers
+function createProject(name = nextUntitled()) {
+    return {
+        name,
+        w: 12,
+        h: 12,
+        layers: [new Uint8Array(12 * 12)], // array of indices per layer
+        layer: 0,
+        palette: [
+            [0, 0, 0],
+            [255, 255, 255],
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+        ],
+        active: 2,
+        tool: "pen",
+        zoom: 20,
+        brushSize: 1,
+        brushShape: "square",
+        selection: null, // {x,y,w,h}
+        preferredColorMode: "auto",
+        lastExport: null, // {type, bytes|string, params}
+        history: { undo: [], redo: [] },
+        transparencyIndex: -1,
+    };
+}
+
+let project = createProject();
+projects.push(project);
+
+function selectProject(p) {
+    // save transparency index of current project
+    if (project) project.transparencyIndex = Number(TRANS.value) | 0;
+    project = p;
+    W.value = project.w;
+    H.value = project.h;
+    resizeCanvas();
+    Z.value = project.zoom;
+    ZV.textContent = project.zoom;
+    brushSizeEl.value = project.brushSize;
+    brushShapeEl.value = project.brushShape;
+    toolsEl.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.tool === project.tool));
+    TRANS.value = String(project.transparencyIndex);
+    renderPalette();
+    renderLayers();
+    renderFrames();
+    draw();
+    setBadge();
+    refreshHistoryBadge();
+}
+
+function closeProject(p) {
+    const idx = projects.indexOf(p);
+    if (idx === -1) return;
+    projects.splice(idx, 1);
+    if (project === p) {
+        const next = projects[idx] || projects[idx - 1];
+        if (next) selectProject(next);
+    }
+    if (projects.length === 0) {
+        const np = createProject();
+        projects.push(np);
+        selectProject(np);
+    }
+    refreshTabs();
+}
+
+DOC_TABS.addEventListener("click", (e) => {
+    const tab = e.target.closest(".doc-tab");
+    if (!tab) return;
+    const idx = Number(tab.dataset.idx);
+    const p = projects[idx];
+    if (e.target.classList.contains("close")) {
+        closeProject(p);
+    } else {
+        selectProject(p);
+    }
+});
 
 /* -------------------------------------------------------
     * Utilities
@@ -90,10 +157,17 @@ function hexToRgb(h) {
 }
 function refreshTabs() {
     DOC_TABS.innerHTML = "";
-    const tab = document.createElement("div");
-    tab.className = "doc-tab active";
-    tab.textContent = project.name;
-    DOC_TABS.appendChild(tab);
+    projects.forEach((p, i) => {
+        const tab = document.createElement("div");
+        tab.className = "doc-tab" + (p === project ? " active" : "");
+        tab.textContent = p.name;
+        tab.dataset.idx = String(i);
+        const close = document.createElement("span");
+        close.className = "close";
+        close.textContent = "\u2715";
+        tab.appendChild(close);
+        DOC_TABS.appendChild(tab);
+    });
 }
 function setBadge() {
     FILEBADGE.textContent = project.name;
@@ -103,15 +177,13 @@ function setBadge() {
 function pushHistory(label) {
     const layer = project.layer;
     const entry = { label, layer, indices: cloneIndices(project.layers[layer]) };
-    history.undo.push(entry);
-    history.redo.length = 0;
+    project.history.undo.push(entry);
+    project.history.redo.length = 0;
     refreshHistoryBadge();
 }
 function refreshHistoryBadge() {
     SIZEBADGE.textContent = `layers:${project.layers.length} • ${project.w}×${project.h}`;
 }
-
-const history = { undo: [], redo: [] };
 
 /* -------------------------------------------------------
     * Rendering
@@ -768,10 +840,10 @@ function drawLayerTo(cx, indices, dx, dy) {
 /* -------------------------------------------------------
     * File/Recent (localStorage)
     * -----------------------------------------------------*/
-function rememberRecent(s) {
+function rememberRecent(s, name = project.name) {
     try {
         const rec = JSON.parse(localStorage.getItem("ts_recent") || "[]");
-        rec.unshift({ name: project.name, ts: s, t: Date.now() });
+        rec.unshift({ name, ts: s, t: Date.now() });
         while (rec.length > 12) rec.pop();
         localStorage.setItem("ts_recent", JSON.stringify(rec));
     } catch (e) {}
@@ -790,7 +862,7 @@ function openRecent() {
         it.className = "item";
         it.textContent = `${r.name} — ${new Date(r.t).toLocaleString()}`;
         it.onclick = () => {
-            importString(r.ts);
+            importString(r.ts, r.name);
             dlgRecent.close();
         };
         list.appendChild(it);
@@ -820,23 +892,18 @@ function closeAllMenus() {
     menubar.querySelectorAll(".menu-btn").forEach((b) => b.setAttribute("aria-expanded", "false"));
     menubar.querySelectorAll(".dropdown").forEach((d) => d.removeAttribute("open"));
 }
+document.addEventListener("click", (e) => {
+    if (!e.target.closest("#menubar")) closeAllMenus();
+});
 function handleMenu(action) {
     const map = {
         newDoc: () => {
-            if (!confirm("Discard current project and start new?")) return;
-            project.name = "untitled.tspr";
-            project.w = 12;
-            project.h = 12;
-            project.layers = [new Uint8Array(12 * 12)];
-            project.layer = 0;
-            draw();
-            renderFrames();
-            setBadge();
+            const p = createProject();
+            projects.push(p);
+            selectProject(p);
         },
         openDoc: () => {
-            const s = prompt("Paste ts1|string:");
-            if (!s) return;
-            importString(s.trim());
+            document.getElementById("fileImg").click();
         },
         openRecent: () => openRecent(),
         save: () => {
@@ -885,21 +952,15 @@ function handleMenu(action) {
             document.getElementById("fileImg").click();
         },
         close: () => {
-            if (confirm("Close current project?")) {
-                project.layers = [new Uint8Array(project.w * project.h)];
-                project.layer = 0;
-                draw();
-                renderFrames();
-            }
+            if (confirm("Close current project?")) closeProject(project);
         },
         closeAll: () => {
             if (confirm("Close ALL (reset)?")) {
-                project.layers = [new Uint8Array(12 * 12)];
-                project.layer = 0;
-                project.w = 12;
-                project.h = 12;
-                draw();
-                renderFrames();
+                projects.splice(0, projects.length);
+                const np = createProject();
+                projects.push(np);
+                selectProject(np);
+                refreshTabs();
             }
         },
         undo: () => undo(),
@@ -1104,20 +1165,22 @@ function shift(dx, dy) {
 }
 
 function undo() {
-    const e = history.undo.pop();
+    const h = project.history;
+    const e = h.undo.pop();
     if (!e) return;
     const cur = { label: "undo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
-    history.redo.push(cur);
+    h.redo.push(cur);
     project.layer = e.layer;
     project.layers[project.layer] = cloneIndices(e.indices);
     renderFrames();
     draw();
 }
 function redo() {
-    const e = history.redo.pop();
+    const h = project.history;
+    const e = h.redo.pop();
     if (!e) return;
     const cur = { label: "redo-back", layer: project.layer, indices: cloneIndices(project.layers[project.layer]) };
-    history.undo.push(cur);
+    h.undo.push(cur);
     project.layer = e.layer;
     project.layers[project.layer] = cloneIndices(e.indices);
     renderFrames();
@@ -1128,7 +1191,8 @@ function showHistory() {
     const dlg = document.getElementById("dlgHistory");
     const list = document.getElementById("historyList");
     list.innerHTML = "";
-    history.undo
+    const h = project.history;
+    h.undo
         .slice()
         .reverse()
         .forEach((e, i) => {
@@ -1147,62 +1211,61 @@ function showHistory() {
 /* -------------------------------------------------------
     * Import / Export helpers
     * -----------------------------------------------------*/
-function importString(s) {
+function importString(s, name) {
     const str = (s || "").trim();
     if (!str) return;
     const dec = TS.decode(str);
-    project.w = dec.width;
-    project.h = dec.height;
-    project.layers = [dec.indices];
-    project.layer = 0;
-    TRANS.value = String(dec.transparencyIndex ?? -1);
-    project.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
-    W.value = project.w;
-    H.value = project.h;
-    resizeCanvas();
-    renderPalette();
+    const p = createProject(name);
+    p.w = dec.width;
+    p.h = dec.height;
+    p.layers = [dec.indices];
+    p.layer = 0;
+    p.palette = dec.palette.map((x) => [x[0] | 0, x[1] | 0, x[2] | 0]);
+    p.transparencyIndex = dec.transparencyIndex ?? -1;
+    projects.push(p);
+    selectProject(p);
     updateStats(str);
-    renderFrames();
-    rememberRecent(str);
-    setBadge();
+    rememberRecent(str, p.name);
+    return p;
 }
 
-// File input direct .tspr reader
+// File input for opening .tspr or PNG files
 document.getElementById("fileImg").addEventListener("change", async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    if (f.name.endsWith(".tspr")) {
-        const ab = await f.arrayBuffer();
-        const bytes = new Uint8Array(ab);
-        const s = "ts1|" + toB64Url(bytes);
-        importString(s);
-    } else {
-        const img = new Image();
-        img.src = URL.createObjectURL(f);
-        await img.decode();
-        const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
-        const cx = c.getContext("2d");
-        cx.drawImage(img, 0, 0);
-        const w = c.width,
-            h = c.height;
-        const rgba = cx.getImageData(0, 0, w, h).data;
-        project.w = w;
-        project.h = h;
-        const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
-        const dec = TS.decode(bytes);
-        project.layers = [dec.indices];
-        project.layer = 0;
-        project.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
-        W.value = w;
-        H.value = h;
-        resizeCanvas();
-        renderPalette();
-        updateStats(bytes);
-        renderFrames();
-        URL.revokeObjectURL(img.src);
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    for (const f of files) {
+        if (f.name.endsWith(".tspr")) {
+            const ab = await f.arrayBuffer();
+            const bytes = new Uint8Array(ab);
+            const s = "ts1|" + toB64Url(bytes);
+            importString(s, f.name);
+        } else {
+            const img = new Image();
+            img.src = URL.createObjectURL(f);
+            await img.decode();
+            const c = document.createElement("canvas");
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            const cx = c.getContext("2d");
+            cx.drawImage(img, 0, 0);
+            const w = c.width,
+                h = c.height;
+            const rgba = cx.getImageData(0, 0, w, h).data;
+            const bytes = TinySprites.encode({ width: w, height: h, rgba, maxPalette: Number(OPT.maxPal.value) | 0 });
+            const dec = TS.decode(bytes);
+            const p = createProject(f.name);
+            p.w = w;
+            p.h = h;
+            p.layers = [dec.indices];
+            p.layer = 0;
+            p.palette = dec.palette.map((x) => [x[0], x[1], x[2]]);
+            projects.push(p);
+            selectProject(p);
+            updateStats(bytes);
+            URL.revokeObjectURL(img.src);
+        }
     }
+    e.target.value = "";
 });
 
 // Export sheet/tileset via menu only; still accessible
@@ -1243,6 +1306,15 @@ document.addEventListener("keydown", (e) => {
     } else if (e.ctrlKey && e.key === "n") {
         e.preventDefault();
         handleMenu("newDoc");
+    } else if (e.ctrlKey && e.key === "w") {
+        e.preventDefault();
+        handleMenu("close");
+    } else if (e.ctrlKey && e.key === "Tab") {
+        e.preventDefault();
+        const dir = e.shiftKey ? -1 : 1;
+        let idx = projects.indexOf(project);
+        idx = (idx + dir + projects.length) % projects.length;
+        selectProject(projects[idx]);
     } else if (e.ctrlKey && e.key === "z") {
         e.preventDefault();
         undo();
@@ -1265,12 +1337,7 @@ document.addEventListener("keydown", (e) => {
     * Init
     * -----------------------------------------------------*/
 function init() {
-    setBadge();
-    renderPalette();
-    renderLayers();
-    resizeCanvas();
+    selectProject(project);
     updateStats(new Uint8Array());
-    
-
 }
 init();

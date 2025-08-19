@@ -347,9 +347,16 @@ dialog::backdrop {
     border-right: 1px solid var(--line);
     color: var(--fg);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 .doc-tab.active {
     background: var(--panel-3);
+}
+
+.doc-tab .close {
+    font-size: 12px;
 }
 
 #previewWrap {
