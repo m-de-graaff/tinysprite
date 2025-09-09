@@ -1,9 +1,13 @@
-export function makeFrameLooper<T>(frames: T[]): () => T | undefined {
-  let i = 0;
-  return () => {
-    if (frames.length === 0) return undefined;
-    const value = frames[i];
-    i = (i + 1) % frames.length;
-    return value;
-  };
+/**
+ * @fileoverview TinySprites Animation - Animation support
+ * @license MIT
+ */
+
+// Placeholder for Phase 5 implementation
+export const decodeAnim = () => {
+  throw new Error('Animation support coming in Phase 5')
+}
+
+export const frameAt = () => {
+  throw new Error('Animation support coming in Phase 5')
 }

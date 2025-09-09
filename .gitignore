@@ -9,3 +9,6 @@ coverage/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+CONTEXT
+TODO

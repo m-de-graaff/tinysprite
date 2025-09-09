@@ -1,49 +1,41 @@
 {
-  "name": "tinysprite-monorepo",
+  "name": "tinysprites",
+  "version": "0.1.0",
+  "description": "Ultra-tiny sprite system for JS13K and web games — pixel-art native, scales crisp like vectors",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
-  "workspaces": [
-    "packages/*",
-    "encoder",
-    "examples/*",
-    "website"
-  ],
-  "packageManager": "pnpm@9.10.0",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm -r --parallel --filter ./examples/* dev",
-    "lint": "eslint . --ext .ts,.tsx",
-    "format": "prettier -w .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.base.json --noEmit",
-    "size": "size-limit",
-    "ci": "pnpm lint && pnpm typecheck && pnpm test && pnpm -r build && pnpm size"
+    "build:core": "pnpm -C packages/core build",
+    "build:minimal": "pnpm -C packages/core build:minimal",
+    "dev": "pnpm -r dev",
+    "test": "pnpm -r test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --apply .",
+    "format": "prettier --write .",
+    "ci:check": "pnpm build && pnpm test && pnpm size:report",
+    "size:report": "node scripts/size-report.js",
+    "clean": "pnpm -r clean && rm -rf dist"
   },
-  "size-limit": [
-    { "name": "core", "path": "packages/core/dist/index.js" },
-    { "name": "tilemap", "path": "packages/tilemap/dist/index.js" },
-    { "name": "anim", "path": "packages/anim/dist/index.js" },
-    { "name": "tracks", "path": "packages/tracks/dist/index.js" },
-    { "name": "svg", "path": "packages/svg/dist/index.js" }
+  "workspaces": [
+    "packages/*",
+    "tools/*",
+    "apps/*"
   ],
-  "size-limit-config": {
-    "plugins": ["@size-limit/file"]
-  },
   "devDependencies": {
-    "@size-limit/file": "^11.1.4",
-    "@tsconfig/strictest": "^2.0.5",
-    "@types/node": "^22.7.5",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
-    "@typescript-eslint/parser": "^8.8.1",
-    "eslint": "^9.12.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.31.0",
-    "prettier": "^3.3.3",
-    "size-limit": "^11.1.4",
-    "tsup": "^8.3.5",
-    "typescript": "^5.6.2",
-    "vitest": "^2.1.3"
-  }
+    "@biomejs/biome": "^1.4.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@types/node": "^20.10.0",
+    "prettier": "^3.1.0",
+    "rollup": "^4.6.1",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.2",
+    "vitest": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
 }

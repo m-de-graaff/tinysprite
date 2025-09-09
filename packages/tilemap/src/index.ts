@@ -1,11 +1,17 @@
-import type { TinySpriteFrame } from '@tinysprite/core';
+/**
+ * @fileoverview TinySprites Tilemap - Tilemap support
+ * @license MIT
+ */
 
-export interface Tilemap {
-  columns: number;
-  rows: number;
-  tiles: number[];
+// Placeholder for Phase 4 implementation
+export const decodeTileset = () => {
+  throw new Error('Tilemap support coming in Phase 4')
 }
 
-export function renderTilemap(_frames: TinySpriteFrame[], _map: Tilemap): void {
-  // placeholder implementation
+export const decodeTilemap = () => {
+  throw new Error('Tilemap support coming in Phase 4')
+}
+
+export const renderTilemap = () => {
+  throw new Error('Tilemap support coming in Phase 4')
 }

@@ -1,14 +1,20 @@
 {
-  "name": "@tinysprites/tilemap",
+  "name": "@tinysprites/encoder",
   "version": "0.1.0",
-  "description": "Tilemap support for tinysprites",
+  "description": "Encoder CLI for tinysprites",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "tinysprites-encode": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli.js"
     }
   },
   "files": ["dist"],
@@ -18,10 +24,13 @@
     "test": "vitest",
     "clean": "rm -rf dist"
   },
-  "sideEffects": false,
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "commander": "^11.1.0"
+  },
   "peerDependencies": {
     "@tinysprites/core": "workspace:*"
   },
-  "keywords": ["sprites", "tilemap", "js13k"],
+  "keywords": ["sprites", "encoder", "cli", "js13k"],
   "license": "MIT"
 }

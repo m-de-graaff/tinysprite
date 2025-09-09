@@ -1,5 +1,4 @@
 packages:
-  - "packages/*"
-  - "encoder"
-  - "examples/*"
-  - "website"
+  - 'packages/*'
+  - 'tools/*'
+  - 'apps/*'

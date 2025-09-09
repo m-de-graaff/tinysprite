@@ -1,0 +1,24 @@
+{
+  "name": "@tinysprites/editor",
+  "version": "0.1.0",
+  "description": "Web editor for tinysprites",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@tinysprites/core": "workspace:*",
+    "@tinysprites/encoder": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "typescript": "^5.3.2"
+  },
+  "keywords": ["sprites", "editor", "web", "js13k"],
+  "license": "MIT"
+}

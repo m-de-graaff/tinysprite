@@ -1,16 +1,10 @@
 {
-  "name": "@tinysprites/tilemap",
+  "name": "@tinysprites/bpe",
   "version": "0.1.0",
-  "description": "Tilemap support for tinysprites",
+  "description": "Byte-pair encoding compression for tinysprites (optional)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
@@ -22,6 +16,6 @@
   "peerDependencies": {
     "@tinysprites/core": "workspace:*"
   },
-  "keywords": ["sprites", "tilemap", "js13k"],
+  "keywords": ["sprites", "compression", "bpe", "js13k", "optional"],
   "license": "MIT"
 }

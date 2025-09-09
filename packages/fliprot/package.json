@@ -1,16 +1,10 @@
 {
-  "name": "@tinysprites/tilemap",
+  "name": "@tinysprites/fliprot",
   "version": "0.1.0",
-  "description": "Tilemap support for tinysprites",
+  "description": "Flip and rotation transforms for tinysprites (optional)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
@@ -22,6 +16,6 @@
   "peerDependencies": {
     "@tinysprites/core": "workspace:*"
   },
-  "keywords": ["sprites", "tilemap", "js13k"],
+  "keywords": ["sprites", "transform", "flip", "rotate", "js13k", "optional"],
   "license": "MIT"
 }

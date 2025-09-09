@@ -1,13 +1,13 @@
-export interface TrackEvent<T> {
-  t: number;
-  v: T;
+/**
+ * @fileoverview TinySprites Tracks - Animation tracks and cutscenes
+ * @license MIT
+ */
+
+// Placeholder for Phase 6 implementation
+export const decodeTracks = () => {
+  throw new Error('Tracks support coming in Phase 6')
 }
 
-export function sampleTrack<T>(events: TrackEvent<T>[], time: number): T | undefined {
-  let prev: TrackEvent<T> | undefined;
-  for (const e of events) {
-    if (e.t > time) break;
-    prev = e;
-  }
-  return prev?.v;
+export const renderTracks = () => {
+  throw new Error('Tracks support coming in Phase 6')
 }

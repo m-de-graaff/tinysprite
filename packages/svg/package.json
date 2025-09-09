@@ -1,24 +1,27 @@
 {
-  "name": "@tinysprite/svg",
-  "version": "0.0.0",
+  "name": "@tinysprites/svg",
+  "version": "0.1.0",
+  "description": "SVG export support for tinysprites (optional)",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap",
-    "dev": "tsup src/index.ts --format esm --dts --sourcemap --watch",
-    "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json -b"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@tinysprite/core": "workspace:*"
-  }
+  "sideEffects": false,
+  "peerDependencies": {
+    "@tinysprites/core": "workspace:*"
+  },
+  "keywords": ["sprites", "svg", "js13k", "optional"],
+  "license": "MIT"
 }
