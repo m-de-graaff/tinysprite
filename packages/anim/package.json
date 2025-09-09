@@ -1,0 +1,24 @@
+{
+  "name": "@tinysprite/anim",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap",
+    "dev": "tsup src/index.ts --format esm --dts --sourcemap --watch",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json -b"
+  },
+  "dependencies": {
+    "@tinysprite/core": "workspace:*"
+  }
+}

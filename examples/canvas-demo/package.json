@@ -1,0 +1,20 @@
+{
+  "name": "@tinysprite/canvas-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tinysprite/core": "workspace:*",
+    "@tinysprite/anim": "workspace:*",
+    "@tinysprite/tilemap": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.8",
+    "typescript": "^5.6.2"
+  }
+}
