@@ -1,5 +1,5 @@
-import typescript from '@rollup/plugin-typescript'
 import terser from '@rollup/plugin-terser'
+import typescript from '@rollup/plugin-typescript'
 
 export default {
   input: 'src/index.ts',
@@ -7,13 +7,13 @@ export default {
     file: 'dist/tinysprite.min.js',
     format: 'iife',
     name: 'TinySprite',
-    sourcemap: false
+    sourcemap: false,
   },
   plugins: [
     typescript({
       target: 'es2020',
       module: 'esnext',
-      declaration: false
+      declaration: false,
     }),
     terser({
       module: true,
@@ -22,16 +22,16 @@ export default {
         passes: 3,
         unsafe: true,
         pure_getters: true,
-        pure_funcs: ['/*#__PURE__*/']
+        pure_funcs: ['/*#__PURE__*/'],
       },
       mangle: {
         properties: {
-          regex: /^_/
-        }
+          regex: /^_/,
+        },
       },
       format: {
-        comments: false
-      }
-    })
-  ]
+        comments: false,
+      },
+    }),
+  ],
 }

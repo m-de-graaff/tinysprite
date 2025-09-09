@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { readFileSync, statSync } from 'fs'
-import { gzipSync, brotliCompressSync } from 'zlib'
-import { join } from 'path'
+import { readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { brotliCompressSync, gzipSync } from 'node:zlib'
 
 const BUDGET_LIMITS = {
   'packages/core/dist/tinysprite.min.js': 3500, // 3.5KB gzipped
@@ -31,23 +31,25 @@ let hasErrors = false
 
 for (const [filePath, budget] of Object.entries(BUDGET_LIMITS)) {
   const sizes = getSize(filePath)
-  
+
   if (!sizes) {
     console.log(`❌ ${filePath} - File not found`)
     hasErrors = true
     continue
   }
-  
+
   const status = sizes.gzip <= budget ? '✅' : '❌'
   const budgetStatus = sizes.gzip <= budget ? 'PASS' : 'FAIL'
-  
+
   if (sizes.gzip > budget) {
     hasErrors = true
   }
-  
+
   console.log(`${status} ${filePath}`)
   console.log(`   Raw: ${formatBytes(sizes.raw)}`)
-  console.log(`   Gzip: ${formatBytes(sizes.gzip)} (budget: ${formatBytes(budget)}) - ${budgetStatus}`)
+  console.log(
+    `   Gzip: ${formatBytes(sizes.gzip)} (budget: ${formatBytes(budget)}) - ${budgetStatus}`
+  )
   console.log(`   Brotli: ${formatBytes(sizes.brotli)}`)
   console.log()
 }

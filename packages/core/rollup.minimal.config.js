@@ -1,20 +1,15 @@
-import typescript from '@rollup/plugin-typescript'
 import terser from '@rollup/plugin-terser'
 
 export default {
-  input: 'src/minimal.ts',
+  // Use the prebuilt minimal ESM from tsup to avoid TS plugin/tslib
+  input: 'dist/minimal.js',
   output: {
-    file: 'dist/tinysprite.minimal.min.js',
+    file: 'dist/tinysprite.min.js',
     format: 'iife',
     name: 'TinySprite',
-    sourcemap: false
+    sourcemap: false,
   },
   plugins: [
-    typescript({
-      target: 'es2020',
-      module: 'esnext',
-      declaration: false
-    }),
     terser({
       module: true,
       toplevel: true,
@@ -22,16 +17,16 @@ export default {
         passes: 3,
         unsafe: true,
         pure_getters: true,
-        pure_funcs: ['/*#__PURE__*/']
+        pure_funcs: ['/*#__PURE__*/'],
       },
       mangle: {
         properties: {
-          regex: /^_/
-        }
+          regex: /^_/,
+        },
       },
       format: {
-        comments: false
-      }
-    })
-  ]
+        comments: false,
+      },
+    }),
+  ],
 }

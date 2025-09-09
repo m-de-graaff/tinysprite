@@ -17,11 +17,7 @@
     "size:report": "node scripts/size-report.js",
     "clean": "pnpm -r clean && rm -rf dist"
   },
-  "workspaces": [
-    "packages/*",
-    "tools/*",
-    "apps/*"
-  ],
+  "workspaces": ["packages/*", "tools/*", "apps/*"],
   "devDependencies": {
     "@biomejs/biome": "^1.4.1",
     "@rollup/plugin-terser": "^0.4.4",
