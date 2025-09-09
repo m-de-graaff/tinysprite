@@ -2,6 +2,7 @@
   "name": "tinysprite-monorepo",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "workspaces": [
     "packages/*",
     "encoder",
